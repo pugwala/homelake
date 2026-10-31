@@ -58,13 +58,13 @@ resources:
         lnl.landing_path: /Volumes/${var.catalog}/${var.schema}/landing/hero_offenders
         lnl.reference_schema: ${var.catalog}.${var.schema}
       tags:
-        course: lunch-and-learn
+        project: homelake
         data: mock
 
   jobs:
     lnl_hero_offenders_daily:
       name: lnl_hero_offenders_daily_${workspace.current_user.short_name}
-      description: "Lunch & Learn enterprise track: refresh the mock-data pipeline, then check data quality."
+      description: "Homelake enterprise track: refresh the mock-data pipeline, then check data quality."
       max_concurrent_runs: 1
       tasks:
         - task_key: refresh_pipeline
@@ -92,5 +92,5 @@ resources:
       #   on_failure:
       #     - id: ${var.alert_destination_id}
       tags:
-        course: lunch-and-learn
+        project: homelake
         data: mock

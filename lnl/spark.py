@@ -19,7 +19,7 @@ def get_spark():
             pass
         return SparkSession.builder.getOrCreate()
     os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")   # quiets hostname warnings when testing locally
-    spark = (SparkSession.builder.master("local[*]").appName("lunch-and-learn")
+    spark = (SparkSession.builder.master("local[*]").appName("homelake")
              .config("spark.ui.enabled", "false")
              .config("spark.ui.showConsoleProgress", "false")
              .config("spark.sql.session.timeZone", "UTC")

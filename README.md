@@ -1,4 +1,4 @@
-# Data Cleansing Lunch & Learn
+# Homelake: data cleansing and a home-lab lakehouse
 
 Seven 45-minute hands-on sessions that take report writers from "I loaded a CSV" to "I can prove these numbers are right." Everyone works on the same 100,000-row mock offender dataset (superheroes and villains, so there's zero chance of real data leaking), built on purpose to contain the problems real-world source systems have: padded blanks, nine date formats, two-digit years, leading zeros, money written six ways, Y/N and T/F flags mixed in one column, race, religion, gang (STG), offense codes and unit names spelled dozens of ways, encoding damage in names, and free-text officer notes with web-form leftovers.
 
