@@ -1,4 +1,4 @@
-"""Helper package for the Data Cleansing Lunch & Learn series.
+"""Helper package for the homelake data cleansing sessions.
 
 Each session's cleansing logic lives here once it has been taught, so later sessions can start
 from clean data with one line:  df = pipeline.clean_through(3)

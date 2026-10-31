@@ -188,7 +188,7 @@ def pipeline_spec(n: dict) -> dict:
                           "lnl.reference_schema": n["fq"]},
     }
     if _sdk_accepts("pipelines", "create", "tags"):        # databricks-sdk 0.56 and newer
-        spec["tags"] = {"course": "lunch-and-learn", "data": "mock"}
+        spec["tags"] = {"project": "homelake", "data": "mock"}
     if config.ENTERPRISE_SERVERLESS:
         spec["serverless"] = True
     else:   # classic compute: expectations need the ADVANCED edition
@@ -278,7 +278,7 @@ def job_settings(n: dict, pipeline_id: str) -> dict:
         validate.existing_cluster_id = config.ENTERPRISE_CLUSTER_ID
     return {
         "name": n["job"],
-        "description": "Lunch & Learn enterprise track: refresh the mock-data pipeline, then check data quality.",
+        "description": "Homelake enterprise track: refresh the mock-data pipeline, then check data quality.",
         "tasks": [J.Task(task_key="refresh_pipeline", pipeline_task=J.PipelineTask(pipeline_id=pipeline_id)), validate],
         "schedule": J.CronSchedule(quartz_cron_expression="0 50 5 * * ?", timezone_id="America/Chicago",
                                    pause_status=J.PauseStatus.PAUSED),
@@ -286,7 +286,7 @@ def job_settings(n: dict, pipeline_id: str) -> dict:
         "webhook_notifications": J.WebhookNotifications(on_failure=[J.Webhook(id=d.id) for d in destinations])
         if destinations else None,
         "max_concurrent_runs": 1,
-        "tags": {"course": "lunch-and-learn", "data": "mock"},
+        "tags": {"project": "homelake", "data": "mock"},
     }
 
 
