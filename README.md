@@ -66,6 +66,10 @@ lnl/                course helper package; each session's cleansing lives here o
   spark_pipeline.py sessions 2-4 in PySpark as functions, for the enterprise pipeline
   enterprise.py     enterprise track helpers: names, the first delivery, the pipeline, the handover
   trust.py          the Trust Test questions      check.py        exercise checkers
+  publish.py        the handoff to course 2: sessions 2-4's output as one Parquet file per table, with a manifest of
+                    fingerprints, published only when the 19 Facilitator Guide numbers match (python -m lnl.publish
+                    --out DIR; needs duckdb, which course 2's platform has)
+  parity.py         those 19 numbers, as checks any DuckDB connection to the output can run
 generator/          gen_hero_offenders.py builds the dataset and the conduct-notes answer key
 wheels/             spaCy's small English model, so session 6 works without github.com access
 docs/               student-handout.pdf, the 10-page student handout, ready to print
@@ -101,5 +105,7 @@ To regenerate or make a different size: `python generator/gen_hero_offenders.py 
 All seven notebooks were executed end to end, both as delivered (blanks unfilled) and with the answer keys filled in, on pandas 3.0 with PySpark 4.2 in local mode. Sessions 1 through 4 were also run on pandas 2.2 with identical results. The Spark pipeline matches pandas on all 22 reconciliation metrics, and on every standardized coded value, record by record.
 
 The enterprise track's Spark rules were run locally against the same data and match the pandas sessions; its Databricks SDK calls and bundle were checked against the SDK and bundle schemas, and the notebooks were reviewed against current Databricks documentation. None of it has run on a Databricks workspace yet.
+
+The handoff to course 2 (`lnl/publish.py`, `lnl/parity.py`) is tested from course 2's repo, which pins this one as a submodule: a fresh publish must reproduce, byte for byte, the version course 2 pinned, and a publish that misses one of the 19 numbers must leave nothing behind.
 
 Session 7 has been run both ways outside Databricks, with the sentence-transformer model and with the fallback method, and few-shot scores highest with each. Not yet tested: an actual Databricks workspace. Do a dry run of each notebook on your compute before the first session.
