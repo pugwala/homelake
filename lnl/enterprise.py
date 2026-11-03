@@ -1,11 +1,14 @@
-"""Enterprise track helpers: object names, SQL that prints itself, landing files, and the pipeline and job.
+"""Enterprise track helpers for course 1 (00-02): object names, SQL that prints itself, the first delivery, the
+pipeline, and the handover of the next deliveries to course 2.
 
 Runs only on a Databricks workspace with Unity Catalog. Everything it creates lives in one schema you own
-(lnl/config.py: ENTERPRISE_CATALOG and ENTERPRISE_SCHEMA), so you can delete the whole track with one
-DROP SCHEMA ... CASCADE, plus the pipeline and job, which are named after you.
+(lnl/config.py: ENTERPRISE_CATALOG and ENTERPRISE_SCHEMA), so you can delete it with one
+DROP SCHEMA ... CASCADE, plus the pipeline, which is named after you. Course 2 (pugwala/lakehouse, enterprise/)
+carries on from here with its own helpers: the next delivery, governance, the job and alerts, monitoring.
 """
+import hashlib
+import json
 import re
-import shutil
 import textwrap
 import time
 from pathlib import Path
@@ -13,10 +16,11 @@ from pathlib import Path
 from . import config, env
 
 PIPELINE_FILE = "enterprise/pipeline/hero_offenders.py"
-VALIDATE_NOTEBOOK = "enterprise/tasks/validate_quality"
 REFERENCE_TABLES = ["race_crosswalk", "religion_crosswalk", "stg_groups", "nibrs_offenses", "violence_codes",
                     "unit_crosswalk"]
 LANDING_FOLDER = "hero_offenders"     # the pipeline reads every file in here
+HANDOFF_FOLDER = "handoff/deliveries" # the next deliveries, staged for course 2 with a manifest
+DELIVERIES = {2: 0, 3: 3}             # batch number: offender numbers a broken export cut short
 TERMINAL_UPDATE_STATES = {"COMPLETED", "FAILED", "CANCELED"}
 
 
@@ -44,10 +48,8 @@ def names() -> dict:
     return {
         "catalog": catalog, "schema": schema, "fq": fq,
         "volume_name": f"{fq}.{config.ENTERPRISE_VOLUME}", "volume": volume,
-        "landing": f"{volume}/{LANDING_FOLDER}", "rejected": f"{volume}/rejected", "staging": f"{volume}/staging",
-        "pipeline": f"lnl_hero_offenders_{slug}", "job": f"lnl_hero_offenders_daily_{slug}",
-        # A group nobody is in, so race and religion stay masked until a real group is configured
-        "restricted_group": config.RESTRICTED_GROUP or "lnl-restricted-group-not-configured",
+        "landing": f"{volume}/{LANDING_FOLDER}", "handoff": f"{volume}/{HANDOFF_FOLDER}",
+        "pipeline": f"lnl_hero_offenders_{slug}",
     }
 
 
@@ -123,19 +125,13 @@ def land_full_dataset(n: dict) -> str:
     return str(target)
 
 
-def land_batch(n: dict, number: int, rows: int = 1_000, bad_ids: int = 0) -> str:
-    """A later delivery from the source system: new incarcerations with new offender numbers (03xxxxxx), the same
-    kinds of mess as batch 1. bad_ids > 0 writes that many offender numbers with a digit missing, as a broken
-    export would."""
+def _delivery(number: int, rows: int, bad_ids: int, staging: Path):
+    """One later delivery from the source system as a DataFrame: new incarcerations with new offender numbers
+    (03xxxxxx), the same kinds of mess as batch 1. bad_ids > 0 cuts a digit from that many offender numbers, as a
+    broken export would."""
     import importlib
     import sys
     import pandas as pd
-    target = Path(n["landing"]) / f"batch_{number:03d}.csv"
-    if target.exists():
-        print(f"Already landed: {target}")
-        return str(target)
-    staging = Path(n["staging"])
-    staging.mkdir(parents=True, exist_ok=True)
     sys.path.insert(0, str(env.REPO_ROOT / "generator"))
     gen = importlib.import_module("gen_hero_offenders")
     tmp = staging / f"batch_{number:03d}_full.csv"
@@ -147,19 +143,32 @@ def land_batch(n: dict, number: int, rows: int = 1_000, bad_ids: int = 0) -> str
     df["offender_number"] = [f"{base + i + 1:08d}" for i in range(len(df))]
     for i in range(min(bad_ids, len(df))):
         df.loc[i * 7, "offender_number"] = df.loc[i * 7, "offender_number"][1:]   # 7 digits: a broken export
-    df.to_csv(target, index=False)
-    tmp.unlink()
-    print(f"Landed {len(df):,} records{f' ({bad_ids} with a broken offender number)' if bad_ids else ''}: {target}")
-    return str(target)
+    for leftover in (tmp, staging / "key.csv"):
+        leftover.unlink(missing_ok=True)
+    return df
 
 
-def move_to_rejected(n: dict, file_name: str) -> str:
-    """Take a delivery out of the landing folder, keeping it for the data owner."""
-    source, rejected = Path(n["landing"]) / file_name, Path(n["rejected"])
-    rejected.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(source), str(rejected / file_name))     # copy + delete when a plain rename isn't supported
-    print(f"Moved {file_name} to {rejected}")
-    return str(rejected / file_name)
+def stage_deliveries(n: dict, rows: int = 1_000) -> dict:
+    """Hand the next deliveries over to course 2: write batch_002.csv and batch_003.csv (DELIVERIES) into the
+    handoff folder of your volume, with manifest.json giving each file's row count and SHA-256. Nothing lands in the
+    pipeline's folder: course 2 checks each fingerprint and lands them itself. Safe to run again: the same seed
+    makes the same files. Returns the manifest."""
+    folder = Path(n["volume"]) / HANDOFF_FOLDER
+    staging = folder / "_staging"
+    staging.mkdir(parents=True, exist_ok=True)
+    files = {}
+    for number, bad_ids in DELIVERIES.items():
+        name = f"batch_{number:03d}.csv"
+        df = _delivery(number, rows, bad_ids, staging)
+        df.to_csv(folder / name, index=False)
+        files[name] = {"rows": len(df), "broken_offender_numbers": bad_ids,
+                       "sha256": hashlib.sha256((folder / name).read_bytes()).hexdigest()}
+        print(f"Staged {name}: {len(df):,} records{f' ({bad_ids} with a broken offender number)' if bad_ids else ''}")
+    staging.rmdir()
+    manifest = {"from": "course 1, enterprise/02_pipeline", "seed": config.SEED, "files": files}
+    (folder / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"Handed over to course 2: {folder}")
+    return manifest
 
 
 # ---- The pipeline ----------------------------------------------------------------------------------
@@ -172,8 +181,8 @@ def _sdk_accepts(api: str, method: str, parameter: str) -> bool:
     """Whether the installed Databricks SDK has this parameter. Serverless environments ship different SDK
     versions (environment 4 has 0.49; pipeline tags arrived in 0.56)."""
     import inspect
-    from databricks.sdk.service import jobs, pipelines
-    cls = {"pipelines": pipelines.PipelinesAPI, "jobs": jobs.JobsAPI}[api]
+    from databricks.sdk.service import pipelines
+    cls = {"pipelines": pipelines.PipelinesAPI}[api]
     return parameter in inspect.signature(getattr(cls, method)).parameters
 
 
@@ -245,81 +254,3 @@ def expectation_metrics(pipeline_id: str, update_id: str = None):
         GROUP BY e.dataset, e.name
         ORDER BY failed DESC, dataset, expectation""")
 
-
-# ---- The job ---------------------------------------------------------------------------------------
-def _notebook_path(relative: str) -> str:
-    """Workspace path of a notebook in the Git folder, with or without the .ipynb extension, whichever exists."""
-    w = _workspace()
-    base = f"{course_paths()['ws']}/{relative}"
-    for candidate in (base, base + ".ipynb"):
-        try:
-            w.workspace.get_status(candidate)
-            return candidate
-        except Exception:
-            continue
-    raise FileNotFoundError(f"Can't find the notebook {relative} in the course's Git folder.")
-
-
-def job_settings(n: dict, pipeline_id: str) -> dict:
-    from databricks.sdk.service import jobs as J
-    w = _workspace()
-    emails = config.ALERT_EMAILS or [user_email()]
-    destinations = [d for d in w.notification_destinations.list() if d.display_name in config.ALERT_DESTINATIONS]
-    missing = set(config.ALERT_DESTINATIONS) - {d.display_name for d in destinations}
-    if missing:
-        print(f"⚠️  Notification destinations not found (ask a workspace admin): {sorted(missing)}")
-    validate = J.Task(
-        task_key="validate_quality", depends_on=[J.TaskDependency(task_key="refresh_pipeline")],
-        notebook_task=J.NotebookTask(notebook_path=_notebook_path(VALIDATE_NOTEBOOK),
-                                     base_parameters={"run_id": "{{job.run_id}}",
-                                                      "course_root": course_paths()["fs"]}, source=J.Source.WORKSPACE),
-    )
-    if not config.ENTERPRISE_SERVERLESS:
-        validate.existing_cluster_id = config.ENTERPRISE_CLUSTER_ID
-    return {
-        "name": n["job"],
-        "description": "Homelake enterprise track: refresh the mock-data pipeline, then check data quality.",
-        "tasks": [J.Task(task_key="refresh_pipeline", pipeline_task=J.PipelineTask(pipeline_id=pipeline_id)), validate],
-        "schedule": J.CronSchedule(quartz_cron_expression="0 50 5 * * ?", timezone_id="America/Chicago",
-                                   pause_status=J.PauseStatus.PAUSED),
-        "email_notifications": J.JobEmailNotifications(on_failure=emails, no_alert_for_skipped_runs=True),
-        "webhook_notifications": J.WebhookNotifications(on_failure=[J.Webhook(id=d.id) for d in destinations])
-        if destinations else None,
-        "max_concurrent_runs": 1,
-        "tags": {"project": "homelake", "data": "mock"},
-    }
-
-
-def ensure_job(n: dict, pipeline_id: str) -> int:
-    """Create the job, or replace its settings if it already exists (run history is kept). Returns its ID."""
-    from databricks.sdk.service import jobs as J
-    w = _workspace()
-    settings = job_settings(n, pipeline_id)
-    existing = [j for j in w.jobs.list(name=n["job"])]
-    if existing:
-        job_id = existing[0].job_id
-        w.jobs.reset(job_id, new_settings=J.JobSettings(**settings))
-        print(f"Updated job {n['job']} ({job_id})")
-    else:
-        job_id = w.jobs.create(**settings).job_id
-        print(f"Created job {n['job']} ({job_id})")
-    return job_id
-
-
-def run_job(job_id: int, timeout_minutes: int = 60):
-    """Run the job now and wait. Returns the finished run (check run.state.result_state)."""
-    w = _workspace()
-    run_id = w.jobs.run_now(job_id).run_id
-    print(f"Run {run_id} started...", end=" ", flush=True)
-    deadline = time.time() + timeout_minutes * 60
-    run = w.jobs.get_run(run_id)
-    while time.time() < deadline and run.state.life_cycle_state.value not in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
-        time.sleep(20)
-        run = w.jobs.get_run(run_id)
-    result = run.state.result_state.value if run.state.result_state else run.state.life_cycle_state.value
-    print(result)
-    for task in run.tasks or []:
-        state = task.state.result_state.value if task.state and task.state.result_state else "-"
-        print(f"  {task.task_key:18} {state}")
-    print(f"  Run page: {run.run_page_url}")
-    return run

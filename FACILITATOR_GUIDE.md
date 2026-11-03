@@ -193,7 +193,7 @@ Results depend on which embedding method loads (the notebook prints it). Tested 
 
 ## After the series: the enterprise track
 
-`enterprise/` is optional and runs only on the agency workspace: Unity Catalog, a Lakeflow pipeline with expectations, masks on race and religion, a scheduled job that alerts, and data-quality monitoring. It's for people who finished sessions 1 to 5, working at their own pace (six notebooks, about three hours), not a room session. [`enterprise/README.md`](enterprise/README.md) has setup and the admin asks; `00_preflight` checks them.
+`enterprise/` is optional and runs only on the agency workspace: Unity Catalog and a Lakeflow pipeline with expectations. It's for people who finished sessions 1 to 5, working at their own pace (three notebooks, about an hour and a quarter), not a room session. Course 2, [pugwala/lakehouse](https://github.com/pugwala/lakehouse), carries on from here in its own `enterprise/` folder: the next delivery (incremental loads), governance (masks, row filters, the published view), a scheduled job that alerts, and monitoring. [`enterprise/README.md`](enterprise/README.md) has setup and the admin asks; `00_preflight` checks them.
 
 Nothing in the track has run on a Databricks workspace yet, so do it yourself before you recommend it. On the dry run, expect:
 
@@ -201,10 +201,6 @@ Nothing in the track has run on a Databricks workspace yet, so do it yourself be
 |---|---|
 | 02, first update | bronze 100,000; silver 100,000; quarantine 0 |
 | 02, event log and `gold_quality_summary` | the session numbers: offense 1,379, unit 266, violence 104, religion 86, STG 77, race 54; 1,086 values that didn't convert; 228 offense/violence conflicts; 8 birth dates |
-| 02, after batch 2 | silver 101,000: only the new file was read |
-| 04, first job run | SUCCESS, every check PASS in `quality_results` |
-| 04, batch 3 | 3 records in `silver_quarantine`, the run FAILED, and a failure email (and a PagerDuty incident, if a destination is set) |
-| 04, after the review | SUCCESS |
-| 03 | race and religion masked, unless you're in `RESTRICTED_GROUP`; two of the four units visible |
+| 02, section 5 | the handoff folder holds `batch_002.csv` (1,000 records) and `batch_003.csv` (1,000, three with a 7-digit offender number), and `manifest.json` lists both with their fingerprints |
 
 If a number differs, the pipeline and the sessions have drifted apart: `lnl/spark_pipeline.py` should give the session numbers exactly.

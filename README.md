@@ -47,7 +47,7 @@ Free Edition is for learning and doesn't permit commercial use. Use it with this
 
 ## Enterprise track (agency workspace)
 
-After the sessions, [`enterprise/`](enterprise/README.md) runs the same cleansing rules the way an enterprise Databricks workspace is built to: data in Unity Catalog, a Lakeflow pipeline whose expectations warn, quarantine or stop, column masks and row filters on race and religion, a scheduled job that alerts by email and PagerDuty (your ticketing system (ServiceNow, Jira, ...) by webhook), and data-quality monitoring. Six notebooks, about three hours in lunch-sized pieces, still on mock data. The settings are the `ENTERPRISE_*` block at the end of `lnl/config.py`; `enterprise/00_preflight` checks what your workspace allows and lists exactly what to ask an admin for. [`enterprise/README.md`](enterprise/README.md) covers setup, the bundle template, and the checklist for before you point it at real tables.
+After the sessions, [`enterprise/`](enterprise/README.md) runs the same cleansing rules the way an enterprise Databricks workspace is built to: data in Unity Catalog, a Lakeflow pipeline whose expectations warn, quarantine or stop, and a pipeline that hands the next deliveries on. Three notebooks, about an hour and a quarter, still on mock data. Course 2, [pugwala/lakehouse](https://github.com/pugwala/lakehouse), carries on from here in its own `enterprise/` folder: the next delivery (incremental loads), governance (masks, row filters, the published view), a scheduled job that alerts, and monitoring. The settings are the `ENTERPRISE_*` block at the end of `lnl/config.py`; `enterprise/00_preflight` checks what your workspace allows and lists exactly what to ask an admin for. [`enterprise/README.md`](enterprise/README.md) covers setup, the bundle template, and the checklist for before you point it at real tables.
 
 ## What's in the repo
 
@@ -64,14 +64,14 @@ lnl/                course helper package; each session's cleansing lives here o
   reference/        the crosswalks: unit locations, race, religion, STG groups, NIBRS offense codes, violence codes (CSV)
   spark.py          session 5    text.py         sessions 6-7
   spark_pipeline.py sessions 2-4 in PySpark as functions, for the enterprise pipeline
-  enterprise.py     enterprise track helpers: names, landing files, pipeline and job
+  enterprise.py     enterprise track helpers: names, the first delivery, the pipeline, the handover
   trust.py          the Trust Test questions      check.py        exercise checkers
 generator/          gen_hero_offenders.py builds the dataset and the conduct-notes answer key
 wheels/             spaCy's small English model, so session 6 works without github.com access
 docs/               student-handout.pdf, the 10-page student handout, ready to print
 extras/             supply_orders_type_conversion.ipynb + mock_supply_orders.csv: a standalone type-conversion walkthrough (keep the two files together)
-enterprise/         the enterprise track: notebooks 00-05, pipeline/ (the Lakeflow pipeline source), tasks/ (the job's
-                    quality check), databricks.yml (bundle template), README.md
+enterprise/         the enterprise track: notebooks 00-02, pipeline/ (the Lakeflow pipeline source),
+                    databricks.yml (bundle template), README.md
 ```
 
 ## The dataset
