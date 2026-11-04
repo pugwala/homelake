@@ -24,9 +24,9 @@ TEXT_SAMPLE_SIZE = 10_000
 
 # ---- Enterprise track (the notebooks in enterprise/, on an enterprise Databricks workspace) -----------------
 # Mock data only, like the rest of the course. 00_preflight checks every one of these settings.
-ENTERPRISE_CATALOG = ""            # a catalog you can create a schema in, e.g. "sandbox" (ask an admin)
+ENTERPRISE_CATALOG = "sandbox"            # a catalog you can create a schema in, e.g. "sandbox" (ask an admin)
 ENTERPRISE_SCHEMA = "lnl_{user}"   # {user} becomes your user name, so each person gets their own schema
 ENTERPRISE_VOLUME = "landing"      # created inside that schema: raw files land here, the pipeline reads them
 ENTERPRISE_SERVERLESS = True       # serverless notebooks and pipelines; False = classic compute below
 ENTERPRISE_PIPELINE_POLICY_ID = "" # classic only: a cluster policy for the pipeline, if your admins require one
-ANALYST_GROUP = ""                 # account group that gets read access to the reference tables (01)
+ANALYST_GROUP = "da"                 # account group that gets read access to the reference tables (01)
