@@ -60,11 +60,17 @@ def course_paths() -> dict:
     return {"fs": fs, "ws": ws}
 
 
+NOT_DATABRICKS = """It needs an enterprise Databricks workspace with Unity Catalog. To run it there:
+  1. In the workspace: Workspace > Create > Git folder, URL https://github.com/pugwala/homelake.git, branch main
+  2. Open enterprise/00_preflight in that Git folder, attach compute (serverless or a cluster), and run it
+Anywhere else, use the session notebooks for practice: notebooks/01 to 07."""
+
+
 def prepare(step: int, title: str) -> dict:
     """Run at the top of every enterprise notebook."""
     if not env.IS_DATABRICKS:
-        raise RuntimeError("The enterprise track runs on an enterprise Databricks workspace (Unity Catalog). "
-                           "Use the session notebooks for practice anywhere else.")
+        raise RuntimeError(f"This is not Databricks ({env.environment_name()}), so the enterprise track stops here. "
+                           + NOT_DATABRICKS)
     env._check_core()
     if step > 0 and not config.ENTERPRISE_CATALOG:
         raise RuntimeError("Set ENTERPRISE_CATALOG in lnl/config.py first. 00_preflight shows what you can use.")
