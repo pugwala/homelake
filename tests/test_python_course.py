@@ -8,8 +8,9 @@ Run them without Databricks, in the course's Jupyter image (the data is built on
 Covered here:
   - lnl/inside.py, the helpers part 0 uses to open course 1's one-line steps and show what each step changed;
   - the part 0 checks in lnl/check.py, graded against the course data, never against a stored number;
-  - python/00_open_the_box.ipynb itself, run top to bottom in a real kernel twice: as delivered (every check asks
-    for an answer) and with its Answers section filled in (every check passes).
+  - the part 1 checks (strings), graded against course 1's last_name_std;
+  - each part's notebook (python/0*.ipynb), run top to bottom in a real kernel twice: as delivered (every check
+    asks for an answer) and with its Answers section filled in (every check passes).
 """
 import contextlib
 import io
@@ -24,7 +25,10 @@ from nbclient import NotebookClient
 from lnl import check, cleaning, env, inside, pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
-PART0 = ROOT / "python" / "00_open_the_box.ipynb"
+PARTS = {   # notebook: (its blanks, how many checks it runs)
+    ROOT / "python" / "00_open_the_box.ipynb": ({"answer_1", "answer_2", "answer_3"}, 3),
+    ROOT / "python" / "01_strings.ipynb": ({"answer_1", "answer_2", "key"}, 4),
+}
 BLANK_LINE = re.compile(r"^(\s*)(\w+) = ___\b.*$", re.M)
 ANSWER = re.compile(r"```python\n(.*?)```", re.S)
 
@@ -193,6 +197,71 @@ def test_p0_ex3_refuses_another_step():
     assert said(check.p0_ex3, "standardize_domains").startswith("❌")
 
 
+# ---- the part 1 checks (strings), against course 1's last_name_std -----------------------------------------------
+
+def test_p1_ex1_is_the_name_in_capitals():
+    """Exercise 1: "gArCiA" in capitals is what course 1's last_name_std makes of it."""
+    assert said(check.p1_ex1, check.___).startswith("✏️")
+    assert said(check.p1_ex1, "GARCIA").startswith("✅")
+    assert said(check.p1_ex1, "Garcia").startswith("❌")
+
+
+def test_p1_ex2_wants_a_comparison_that_is_true():
+    """Exercise 2: a comparison that ignores capitals comes out True."""
+    assert said(check.p1_ex2, check.___).startswith("✏️")
+    assert said(check.p1_ex2, "gArCiA".upper() == "GARCIA").startswith("✅")
+    assert said(check.p1_ex2, "gArCiA" == "GARCIA").startswith("❌")
+
+
+@pytest.mark.parametrize("key", [lambda n: n.strip().upper(), lambda n: " ".join(n.upper().split())],
+                         ids=["strip-upper", "split-join"])
+def test_p1_ex3_passes_a_match_key_that_agrees_with_course_1(key):
+    """Exercise 3: any function that gives course 1's last_name_std for every last name without accents."""
+    assert said(check.p1_ex3, key).startswith("✅")
+
+
+def _blank_key(name):
+    """A match_key whose blank hasn't been filled in."""
+    key = check.___
+    return key
+
+
+def _no_return(name):
+    """A match_key that forgot its return line."""
+    name.strip().upper()
+
+
+def _boom(name):
+    """A match_key that stops with an error."""
+    return name.upper(1)
+
+
+def test_p1_ex3_explains_what_is_wrong():
+    """Blank: asks. Forgot capitals: ❌ with an example. No return: says so. An error: shows it."""
+    assert said(check.p1_ex3, _blank_key).startswith("✏️")
+    wrong = said(check.p1_ex3, lambda n: n.strip())
+    assert wrong.startswith("❌") and "gives" in wrong
+    assert "return" in said(check.p1_ex3, _no_return)
+    boom = said(check.p1_ex3, _boom)
+    assert boom.startswith("❌") and "TypeError" in boom
+
+
+def test_p1_payoff_counts_spellings_names_and_kents(raw):
+    """The payoff: the student's function over all 100,000 raw last names, and the KENTs it finds, the same 3 as
+    session 2 (counted here from the raw file, not from the check's own code)."""
+    spellings = raw["last_name"].nunique()
+    names = raw["last_name"].str.strip().str.upper().nunique()
+    kents = int((raw["last_name"].str.strip().str.upper() == "KENT").sum())
+    text = said(check.p1_payoff, lambda n: n.strip().upper())
+    assert text.startswith("✅")
+    assert f"{spellings:,} spellings" in text and f"{names:,} names" in text and f"{kents} records named KENT" in text
+    assert said(check.p1_payoff, lambda n: n).startswith("❌")
+    only_kent = lambda n: "KENT" if n.strip().upper() == "KENT" else n   # noqa: E731  right KENTs, wrong elsewhere
+    assert said(check.p1_payoff, only_kent).startswith("❌")
+    blank = said(check.p1_payoff, _blank_key)
+    assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank   # asks, and says nothing else
+
+
 # ---- the notebook ------------------------------------------------------------------------------------------------
 
 def answers(nb) -> dict:
@@ -217,33 +286,42 @@ def filled(nb):
     return nb
 
 
-def run(nb) -> list:
+def run(path, nb) -> list:
     """Run a notebook top to bottom in its own folder; returns every check's printed verdict, in order."""
-    NotebookClient(nb, timeout=600, kernel_name="python3", resources={"metadata": {"path": str(PART0.parent)}}).execute()
+    NotebookClient(nb, timeout=600, kernel_name="python3", resources={"metadata": {"path": str(path.parent)}}).execute()
     verdicts = []
     for cell in nb.cells:
-        if cell.cell_type == "code" and "check.p0_ex" in cell.source:
+        if cell.cell_type == "code" and re.search(r"check\.p\d_", cell.source):
             verdicts.append("".join(o.get("text", "") for o in cell.get("outputs", [])
                                     if o.get("output_type") == "stream").strip())
     return verdicts
 
 
-def test_part0_ships_clean_with_an_answer_for_every_blank():
-    """Stored without outputs, like course 1's notebooks; three exercises, each answered at the bottom."""
-    nb = nbformat.read(PART0, as_version=4)
+def test_every_part_is_tested():
+    """Each notebook in python/ is listed in PARTS, so none ships untested."""
+    assert sorted(ROOT.glob("python/*.ipynb")) == sorted(PARTS)
+
+
+@pytest.mark.parametrize("path", PARTS, ids=lambda p: p.stem)
+def test_part_ships_clean_with_an_answer_for_every_blank(path):
+    """Stored without outputs, like course 1's notebooks; its blanks are the expected ones, each answered at the
+    bottom."""
+    nb = nbformat.read(path, as_version=4)
     code = [c for c in nb.cells if c.cell_type == "code"]
     assert code and not any(c.outputs or c.execution_count for c in code)
     blanks = {m.group(2) for c in code for m in BLANK_LINE.finditer(c.source)}
-    assert blanks == {"answer_1", "answer_2", "answer_3"} and blanks <= set(answers(nb))
+    assert blanks == PARTS[path][0] and blanks <= set(answers(nb))
 
 
-def test_part0_as_delivered_runs_and_every_check_asks_for_an_answer():
-    """Blanks in place: no error anywhere, and each of the three checks prints its 'Replace ___' prompt."""
-    verdicts = run(nbformat.read(PART0, as_version=4))
-    assert len(verdicts) == 3 and all("Replace ___" in v for v in verdicts), verdicts
+@pytest.mark.parametrize("path", PARTS, ids=lambda p: p.stem)
+def test_part_as_delivered_runs_and_every_check_asks_for_an_answer(path):
+    """Blanks in place: no error anywhere, and every check prints its 'Replace ___' prompt."""
+    verdicts = run(path, nbformat.read(path, as_version=4))
+    assert len(verdicts) == PARTS[path][1] and all("Replace ___" in v for v in verdicts), verdicts
 
 
-def test_part0_with_the_answers_filled_in_every_check_passes():
-    """The Answers section's code in place of each blank: all three checks say ✅."""
-    verdicts = run(filled(nbformat.read(PART0, as_version=4)))
-    assert len(verdicts) == 3 and all(v.startswith("✅") for v in verdicts), verdicts
+@pytest.mark.parametrize("path", PARTS, ids=lambda p: p.stem)
+def test_part_with_the_answers_filled_in_every_check_passes(path):
+    """The Answers section's code in place of each blank: every check says ✅."""
+    verdicts = run(path, filled(nbformat.read(path, as_version=4)))
+    assert len(verdicts) == PARTS[path][1] and all(v.startswith("✅") for v in verdicts), verdicts

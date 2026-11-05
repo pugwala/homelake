@@ -193,7 +193,7 @@ Results depend on which embedding method loads (the notebook prints it). Tested 
 
 ## Between the courses: the Python mini-course
 
-For students new to Python, after course 1 and before course 2. It starts from results they already saw, then teaches the Python behind them: value first, then the how. Each part's timing, numbers and talking points are in [`python/README.md`](python/README.md). Part 0, *Open the Box*, takes about 30 minutes, and students write no code: they open session 2's one line and run its six steps by hand. Dry-run it like any session: the three answers are 77734, 6122 and `"standardize_names"`.
+For students new to Python, after course 1 and before course 2. It starts from results they already saw, then teaches the Python behind them: value first, then the how. Each part's timing, numbers and talking points are in [`python/README.md`](python/README.md). Part 0, *Open the Box*, takes about 30 minutes, and students write no code: they open session 2's one line and run its six steps by hand. Dry-run it like any session: the three answers are 77734, 6122 and `"standardize_names"`. Part 1, *Strings*, takes about 45 minutes; students write their first function, `match_key`, and it finds the Trust Test's 3 KENTs.
 
 ## After the series: the enterprise track
 

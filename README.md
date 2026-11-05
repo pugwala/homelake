@@ -18,7 +18,7 @@ Seven 45-minute hands-on sessions that take report writers from "I loaded a CSV"
 
 ### Between course 1 and course 2: the Python mini-course
 
-For students new to Python. Course 1 shows what clean data is worth; [`python/`](python/README.md) shows how the code that cleaned it works, starting from results students already saw. Part 0, *Open the Box*, opens session 2's one line into its six steps and runs them by hand. Parts 1 to 5 (strings, lists and loops, pandas, patterns, your own pipeline) are planned.
+For students new to Python. Course 1 shows what clean data is worth; [`python/`](python/README.md) shows how the code that cleaned it works, starting from results students already saw. Part 0, *Open the Box*, opens session 2's one line into its six steps and runs them by hand. Part 1, *Strings*, has students write their first function, which answers the Trust Test's Q3 the way session 2 does. Parts 2 to 5 (lists and loops, pandas, patterns, your own pipeline) are planned.
 
 Each session runs about 5 minutes of setup and recap, 30 minutes hands-on, and 10 minutes of wrap-up. Exercises check themselves, and answer keys are at the bottom of each notebook. See [FACILITATOR_GUIDE.md](FACILITATOR_GUIDE.md) for timing, talking points, and the numbers everyone should see.
 

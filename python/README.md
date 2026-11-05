@@ -12,7 +12,7 @@ course data, so if course 1's code changes, the checks change with it.
 | Part | Notebook | Starts from (the value) | Python taught (the how) |
 | --- | --- | --- | --- |
 | 0 | `00_open_the_box.ipynb` | `cleaning.session2(df)`, the one line from course 1 | None: a function is a named recipe; run its six steps by hand and see what each changed |
-| 1 | *planned* | One messy name, before and after | Variables, strings, text methods, f-strings, a first function |
+| 1 | `01_strings.ipynb` | Trust Test Q3: no KENTs as written, 3 after session 2 | Variables, strings, methods, `==`, f-strings, a first function (`match_key`), `.map` |
 | 2 | *planned* | The "don't know" codes (`N/A`, `UNK`, `99:99`) | Lists, dictionaries, `for`, `if` |
 | 3 | *planned* | The same count in one line | pandas: a column, `.str`, `value_counts`, filtering; write `strip_and_null` |
 | 4 | *planned* | Course 1's IDs and date formats | Reading, then writing, patterns (regular expressions) |
@@ -52,8 +52,39 @@ What the room should see (100,000 rows, seed 2026):
   `housing_restriction` is a real answer and stays.
 - Running steps one at a time is also how you find a wrong number later: see which step changed it.
 
+## Part 1 · Strings (about 45 minutes)
+
+Students write their first function. They:
+1. see Q3 asked two ways: an exact match on `KENT` finds 0 records, session 2 finds 3 (`Kent`, `kent`, `kEnT`), and
+   GARCIA is typed 31 ways;
+2. meet strings and variables (`name = "gArCiA"`, `len`, `+`, brackets to make spaces visible);
+3. use methods (`.upper()`, `.lower()`, `.title()`, `.strip()`), which hand back a new string and never change the old one;
+4. ask questions with `==` (and see why `=` isn't that);
+5. build text with f-strings, and see where `.title()` goes wrong (`Mcdonald`, `Worthington Iii`) and course 1's
+   `display_name` doesn't;
+6. write `match_key(name)`, checked against course 1's `last_name_std` on every different last name without accents;
+7. run it on all 100,000 last names with `.map`, then read `standardize_names` to see the same idea.
+
+What the room should see:
+
+| Exercise | Answer | The check says |
+| --- | --- | --- |
+| #1 | `name.upper()` | GARCIA |
+| #2 | `name.upper() == "GARCIA"` | True |
+| #3 | `key = name.strip().upper()` | agrees on all 9,125 different last names without accents |
+| Payoff | (no blank) | 9,619 spellings become 379 names; 3 records named KENT, as session 2 found |
+
+**Points worth a pause:**
+- `=` names a value; `==` asks a question. Mixing them up is the most common first error.
+- `" ".join(name.upper().split())` also passes #3: `split()` drops spaces and tabs at both ends too. Worth showing
+  if someone finds it.
+- The 379 names include one empty name: the last names that were only spaces and tabs. Session 2 makes those null
+  instead, which part 2's "don't know" codes build on.
+- Accented names were left out of the check on purpose: `fold_accents` handles them, and the notebook says so.
+
 ## Tests
 
-`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_ex*`) and the notebook,
-run top to bottom twice: blanks in place (every check asks for an answer) and answers filled in (every check passes).
+`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*`, `check.p1_*`) and
+every part's notebook, each run top to bottom twice: blanks in place (every check asks for an answer) and answers
+filled in (every check passes). A notebook added to `python/` without a test fails it.
 It needs no Databricks; the command is at the top of the file.

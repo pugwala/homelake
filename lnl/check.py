@@ -192,3 +192,93 @@ def p0_ex3(answer):
     if isinstance(name, str):
         name = name.strip().removeprefix("cleaning.").removesuffix("()").strip()
     _verdict(name, "standardize_names", "look for the step whose report says 'New columns (3)': type its name in quotes")
+
+
+# ---- Python mini-course, part 1: strings ------------------------------------------------------------------------
+P1_NAME = "gArCiA"   # how one GARCIA in the file is written
+
+
+def _p1_std(text: str) -> str:
+    """What course 1's standardize_names makes of one last name: its last_name_std."""
+    from .cleaning import standardize_names
+    return standardize_names(pd.DataFrame({"last_name": [text], "first_name": [None], "alias": [None]}))["last_name_std"].iloc[0]
+
+
+def p1_ex1(answer):
+    """The name in capitals, which is what course 1's last_name_std holds for it."""
+    _verdict(answer, _p1_std(P1_NAME), 'put .upper() after name: name.upper()')
+
+
+def p1_ex2(answer):
+    """A comparison of name with "GARCIA" that ignores capitals, so it comes out True."""
+    if isinstance(answer, _Blank):
+        _verdict(answer, True, "")
+    elif answer is True:
+        print("✅ Correct: True. With both sides in capitals, the spellings match.")
+    else:
+        print(f"❌ Not quite. You have {answer!r}. Hint: capitals first, then compare: name.upper() == \"GARCIA\"")
+
+
+@lru_cache(maxsize=None)
+def _p1_names():
+    """{last name: course 1's last_name_std} for every different last name without accents, after session 2."""
+    df = _stage(2)
+    pairs = df[["last_name", "last_name_std"]].dropna().drop_duplicates("last_name")
+    pairs = pairs[pairs["last_name"].map(str.isascii)]
+    return dict(zip(pairs["last_name"], pairs["last_name_std"]))
+
+
+def _p1_try(func):
+    """Run a student's match_key over every last name without accents. Returns (verdict, message): verdict is
+    'blank', 'error' or 'ok'/'wrong' with the number that agree and the first that doesn't."""
+    try:
+        if isinstance(func(P1_NAME), _Blank):
+            return "blank", ""
+        mismatch, agree = None, 0
+        for name, std in _p1_names().items():
+            got = func(name)
+            if got == std:
+                agree += 1
+            elif mismatch is None:
+                mismatch = (name, got, std)
+    except Exception as e:   # the student's code, any error: say which, don't stop the notebook
+        return "error", f"{type(e).__name__}: {e}"
+    if mismatch is None:
+        return "ok", agree
+    name, got, std = mismatch
+    if got is None:
+        return "wrong", "your function gave back nothing (None). Did you keep the line `return key`?"
+    return "wrong", f"match_key({name!r}) gives {got!r}, but course 1 has {std!r}"
+
+
+def p1_ex3(func):
+    """match_key gives course 1's last_name_std for every last name without accents."""
+    state, detail = _p1_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "error":
+        print(f"❌ Your function stopped with an error: {detail}. Hint: name.strip().upper()")
+    elif state == "wrong":
+        print(f"❌ Not quite: {detail}. Hint: name.strip().upper()")
+    else:
+        print(f"✅ Your match_key agrees with course 1's last_name_std on all {detail:,} different last names "
+              "without accents.")
+
+
+def p1_payoff(func):
+    """The student's match_key over all 100,000 last names as written: how many spellings become how many names,
+    and whether it finds session 2's KENTs."""
+    state, detail = _p1_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state == "error":
+        print(f"❌ Your function stopped with an error: {detail}.")
+        return
+    from . import pipeline
+    raw = pipeline.load_raw()["last_name"]
+    keys = raw.map(func)
+    kents, session2 = int((keys == "KENT").sum()), int((_stage(2)["last_name_std"] == "KENT").sum())
+    line = (f"Your match_key turns {raw.nunique():,} spellings into {keys.nunique():,} names, and finds "
+            f"{kents} records named KENT (session 2 found {session2}).")
+    print(f"✅ {line}" if state == "ok" and kents == session2 else f"❌ {line} Fix exercise 3 first.")
