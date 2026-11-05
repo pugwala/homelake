@@ -15,7 +15,7 @@ course data, so if course 1's code changes, the checks change with it.
 | 1 | `01_strings.ipynb` | Trust Test Q3: no KENTs as written, 3 after session 2 | Variables, strings, methods, `==`, f-strings, a first function (`match_key`), `.map` |
 | 2 | `02_lists_and_loops.ipynb` | No disciplinary points recorded: 3,005 empty, but 5,851 really | Lists, dictionaries, `for`, `if`, `None`, a counter; write `clean_value`; read `apply_null_tokens` and `display_name` |
 | 3 | `03_pandas.ipynb` | Trust Test Q1: 1,536 custody levels look empty, 2,991 are | DataFrame and Series, a question of every value, `.sum()`, `.str`, `.loc` filtering, `.mask`, `.isna()`; write `strip_and_null` |
-| 4 | *planned* | Course 1's IDs and date formats | Reading, then writing, patterns (regular expressions) |
+| 4 | `04_patterns.ipynb` | Trust Test Q4: `01-01-2018` as text, `1999-11-02` really | Reading and writing patterns (`\d`, `{8}`, `[A-Za-z]`, `+`), `re.fullmatch`, `re.sub`; prove the IDs; write `shape` |
 | 5 | *planned* | "Your own session 2" | Chaining your functions; checking yours against course 1's; the same step in course 2's SQL |
 
 Course 1's text sessions (6 and 7) aren't covered yet.
@@ -138,9 +138,35 @@ What the room should see:
 - Course 1 loops over `text_columns(out)`, not `out.columns`, so it still works once later sessions add numbers and
   dates.
 
+## Part 4 · Patterns (about 45 minutes)
+
+Students read and write the patterns behind course 1's ID proof and date formats. They:
+1. see Q4 asked of the dates as written (`01-01-2018`, text sorted by its first character) and after session 3
+   (`1999-11-02`), then a sample of the 45,025 different dates;
+2. learn the pattern pieces course 1 uses (`\d`, `{8}`, `{1,2}`, `[A-Za-z]`, `+`) and `re.fullmatch`;
+3. see the naive load turn `02381457` into `2381457` (Q5), then write the ID pattern and read `set_record_id`'s proof;
+4. write `shape()` with `re.sub` (digits to 9, letters to A), checked against `dates.profile_shapes`;
+5. watch 45,025 dates collapse into 26 shapes, read `DATE_FORMATS`' nine patterns, write the `YYYY-MM-DD` one and
+   read `classify_formats`.
+
+What the room should see:
+
+| Exercise | Answer | The check says |
+| --- | --- | --- |
+| #1 | `r"\d{8}"` | agrees with `ID_PATTERN` on all 186,885 IDs and near-misses |
+| #2 | `text = re.sub(r"[A-Za-z]", "A", text)` | course 1's `profile_shapes` table exactly: 26 shapes |
+| Payoff | (no blank) | 45,025 different dates, 26 shapes, 9 patterns recognize every one |
+| #3 | `r"\d{4}-\d{2}-\d{2}"` | exactly the dates course 1 reads as YYYY-MM-DD |
+
+**Points worth a pause:**
+- Every ID in the file passes. The pattern isn't there to find bad IDs today; it's the proof course 1 demands before
+  converting any, and `raise` stops the pipeline the day one fails.
+- `fullmatch` matters: `r"\d{4}-\d{2}-\d{2}"` must not match `2027-01-17 00:00:00`. With `re.search` it would.
+- Recognizing a format isn't reading a date: `02/30/2020` has the right shape but no such day. Session 3 flags those.
+
 ## Tests
 
-`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p3_*`) and
+`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p4_*`) and
 every part's notebook, each run top to bottom twice: blanks in place (every check asks for an answer) and answers
 filled in (every check passes). A notebook added to `python/` without a test fails it.
 It needs no Databricks; the command is at the top of the file.

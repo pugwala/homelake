@@ -11,6 +11,7 @@ Covered here:
   - the part 1 checks (strings), graded against course 1's last_name_std;
   - the part 2 checks (lists, dictionaries, loops, if), graded against course 1's apply_null_tokens;
   - the part 3 checks (pandas), graded against course 1's strip_and_null;
+  - the part 4 checks (patterns), graded against course 1's ID_PATTERN, profile_shapes and DATE_FORMATS;
   - each part's notebook (python/0*.ipynb), run top to bottom in a real kernel twice: as delivered (every check
     asks for an answer) and with its Answers section filled in (every check passes).
 """
@@ -32,6 +33,7 @@ PARTS = {   # notebook: (its blanks, how many checks it runs)
     ROOT / "python" / "01_strings.ipynb": ({"answer_1", "answer_2", "key"}, 4),
     ROOT / "python" / "02_lists_and_loops.ipynb": ({"answer_1", "answer_2", "unknown"}, 4),
     ROOT / "python" / "03_pandas.ipynb": ({"answer_1", "answer_2", "stripped"}, 4),
+    ROOT / "python" / "04_patterns.ipynb": ({"answer_1", "text", "answer_3"}, 4),
 }
 BLANK_LINE = re.compile(r"^(\s*)(\w+) = ___\b.*$", re.M)
 ANSWER = re.compile(r"```python\n(.*?)```", re.S)
@@ -409,6 +411,80 @@ def test_p3_payoff_answers_q1_with_the_students_table(raw):
     assert text.startswith("✅") and f"{really:,}" in text and f"{looked:,}" in text
     assert said(check.p3_payoff, _sn_strip_only).startswith("❌")
     blank = said(check.p3_payoff, _sn_blank)
+    assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
+
+
+# ---- the part 4 checks (patterns), against course 1's ID_PATTERN, profile_shapes and DATE_FORMATS -----------------
+
+@pytest.mark.parametrize("pattern", [r"\d{8}", r"[0-9]{8}", r"\d\d\d\d\d\d\d\d"])
+def test_p4_ex1_passes_any_pattern_for_exactly_8_digits(pattern):
+    """Exercise 1: a pattern that accepts every ID in the file and refuses what course 1's ID_PATTERN refuses."""
+    assert said(check.p4_ex1, pattern).startswith("✅")
+
+
+def test_p4_ex1_explains_what_is_wrong():
+    """Blank: asks. Too loose: names a value it lets through. Not a string, or broken: says so."""
+    assert said(check.p4_ex1, check.___).startswith("✏️")
+    loose = said(check.p4_ex1, r"\d+")
+    assert loose.startswith("❌") and "'2381457'" in loose
+    strict = said(check.p4_ex1, r"[0-8]{8}")   # too strict: refuses any ID with a 9 in it
+    assert strict.startswith("❌") and "does not match yours" in strict
+    assert "string" in said(check.p4_ex1, 8)
+    broken = said(check.p4_ex1, "(")
+    assert broken.startswith("❌") and "error" in broken
+
+
+def _shape_good(text):
+    """A correct shape(): digits become 9, letters become A."""
+    text = re.sub(r"\d", "9", text)
+    return re.sub(r"[A-Za-z]", "A", text)
+
+
+def _shape_capitals_only(text):
+    """Wrong: only capital letters become A, so 'February' keeps its small letters."""
+    text = re.sub(r"\d", "9", text)
+    return re.sub(r"[A-Z]", "A", text)
+
+
+def _shape_blank(text):
+    """A shape() whose blank hasn't been filled in."""
+    text = re.sub(r"\d", "9", text)
+    text = check.___
+    return text
+
+
+def test_p4_ex2_passes_a_shape_function_that_matches_profile_shapes():
+    """Exercise 2: the same shapes, with the same counts, as course 1's dates.profile_shapes."""
+    assert said(check.p4_ex2, _shape_good).startswith("✅")
+
+
+def test_p4_ex2_explains_what_is_wrong():
+    """Blank: asks. Small letters left alone: ❌ naming a value. An error: shows it."""
+    assert said(check.p4_ex2, _shape_blank).startswith("✏️")
+    wrong = said(check.p4_ex2, _shape_capitals_only)
+    assert wrong.startswith("❌") and "shape(" in wrong
+    one_shape = said(check.p4_ex2, lambda t: "99/99/9999")   # always a real shape, but the wrong one
+    assert one_shape.startswith("❌") and "counts" in one_shape
+    boom = said(check.p4_ex2, lambda t: t.nope())
+    assert boom.startswith("❌") and "AttributeError" in boom
+
+
+def test_p4_ex3_is_the_pattern_for_year_month_day():
+    """Exercise 3: a pattern that matches exactly the dates course 1 labels YYYY-MM-DD, not the ones with a time."""
+    assert said(check.p4_ex3, check.___).startswith("✏️")
+    assert said(check.p4_ex3, r"\d{4}-\d{2}-\d{2}").startswith("✅")
+    with_time = said(check.p4_ex3, r"\d{4}-\d{2}-\d{2}.*")
+    assert with_time.startswith("❌") and "00:00:00" in with_time
+
+
+def test_p4_payoff_shows_the_shapes_of_every_date(raw):
+    """The payoff: the student's shape() over the whole column, against the number of different dates in it."""
+    dates_written = raw["projected_release_date"].str.strip()
+    different = dates_written[dates_written != ""].nunique()
+    text = said(check.p4_payoff, _shape_good)
+    assert text.startswith("✅") and f"{different:,} different dates" in text
+    assert said(check.p4_payoff, _shape_capitals_only).startswith("❌")
+    blank = said(check.p4_payoff, _shape_blank)
     assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
 
 

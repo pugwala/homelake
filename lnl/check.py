@@ -444,3 +444,114 @@ def p3_payoff(func):
     print(f"✅ Q1, from your own table: {int(detail['custody_level'].isna().sum()):,} records are missing a custody "
           f"level, not the {looked:,} that looked empty. Across the file your function made "
           f"{int(detail.isna().sum().sum()):,} values empty, part 0's step 1.")
+
+
+# ---- Python mini-course, part 4: patterns -----------------------------------------------------------------------
+P4_TRICKY = ["2381457", "023814570", "0238145O", "02381457 ", "0238-1457", ""]   # near-misses an ID check must refuse
+
+
+@lru_cache(maxsize=None)
+def _p4_dates() -> tuple:
+    """Every different projected_release_date as written (stripped, blanks left out), in order."""
+    from .cleaning import strip_and_null
+    return tuple(sorted(strip_and_null(_p3_raw())["projected_release_date"].dropna().unique()))
+
+
+def _p4_compare(pattern, reference, values):
+    """('blank'|'error'|'wrong'|'ok', message): does the student's pattern fullmatch exactly the values the
+    reference pattern does?"""
+    import re
+    if isinstance(pattern, _Blank):
+        return "blank", ""
+    if not isinstance(pattern, str):
+        return "wrong", f"you have {pattern!r}; a pattern is a string, in quotes: r\"...\""
+    try:
+        compiled = re.compile(pattern)
+    except re.error as e:
+        return "error", f"Python can't read that pattern (error: {e})"
+    for v in values:
+        mine, theirs = bool(compiled.fullmatch(v)), bool(re.fullmatch(reference, v))
+        if mine != theirs:
+            return "wrong", f"{v!r} {'matches' if mine else 'does not match'} yours, but course 1's {'accepts' if theirs else 'refuses'} it"
+    return "ok", len(values)
+
+
+def _p4_say(state, detail, hint, ok_line):
+    """Print the verdict for a pattern exercise."""
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "ok":
+        print(f"✅ {ok_line.format(n=detail)}")
+    else:
+        print(f"❌ Not quite: {detail}. Hint: {hint}")
+
+
+def p4_ex1(pattern):
+    """A pattern for an ID: exactly 8 digits, like course 1's ID_PATTERN, tried on every ID in the file and on some
+    near-misses."""
+    from .cleaning import ID_PATTERN
+    raw = _p3_raw()
+    sids = raw["sid_number"].str.strip()
+    values = P4_TRICKY + sorted(set(raw["offender_number"]) | set(sids[sids != ""]))
+    state, detail = _p4_compare(pattern, ID_PATTERN, values)
+    _p4_say(state, detail, r'a digit is \d, and {8} means exactly 8 of them: r"\d{8}"',
+            "Your pattern agrees with course 1's ID_PATTERN on all {n:,} IDs and near-misses.")
+
+
+def _p4_shapes_try(func):
+    """Run a student's shape() on every projected_release_date as written and compare its counts with course 1's
+    dates.profile_shapes. Returns (state, detail), detail being their counts when 'ok'."""
+    if _still_blank(func):
+        return "blank", None
+    from .cleaning import strip_and_null
+    from .dates import profile_shapes
+    column = strip_and_null(_p3_raw())["projected_release_date"]
+    course1 = profile_shapes(column, top=1_000_000)["count"].to_dict()
+    try:
+        theirs = column.dropna().map(func)
+    except Exception as e:   # the student's code, any error: say which, don't stop the notebook
+        return "error", f"Your function stopped with an error: {type(e).__name__}: {e}"
+    for value, got in zip(column.dropna(), theirs):
+        if got not in course1:
+            return "wrong", f"shape({value!r}) gives {got!r}, which isn't one of course 1's shapes"
+    counts = theirs.value_counts().to_dict()
+    if counts != course1:
+        return "wrong", "your shapes are right but their counts differ from course 1's"
+    return "ok", counts
+
+
+def p4_ex2(func):
+    """shape(): every digit becomes 9 and every letter becomes A, giving course 1's profile_shapes table."""
+    state, detail = _p4_shapes_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "ok":
+        print(f"✅ Your shape function gives course 1's profile_shapes table exactly: {len(detail)} shapes.")
+    else:
+        print(f"❌ {detail}. Hint: text = re.sub(r\"[A-Za-z]\", \"A\", text)")
+
+
+def p4_ex3(pattern):
+    """The pattern for a date written like 2029-11-03, tried on every projected_release_date against course 1's
+    YYYY-MM-DD pattern."""
+    from .dates import DATE_FORMATS
+    reference = next(regex for label, regex, _ in DATE_FORMATS if label == "YYYY-MM-DD")
+    state, detail = _p4_compare(pattern, reference, list(_p4_dates()))
+    _p4_say(state, detail, r'four digits, a dash, two digits, a dash, two digits: \d{4}-...',
+            "Your pattern picks out exactly the dates course 1 reads as YYYY-MM-DD, among all {n:,} different dates.")
+
+
+def p4_payoff(func):
+    """The student's shape() over the whole column: how many different dates become how many shapes, top five."""
+    state, detail = _p4_shapes_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state != "ok":
+        print(f"❌ {detail}. Fix exercise 2 first.")
+        return
+    from .dates import DATE_FORMATS
+    print(f"✅ Your shape function turns {len(_p4_dates()):,} different dates into {len(detail)} shapes. "
+          f"Course 1 recognizes every one of them with {len(DATE_FORMATS)} patterns. The five most common:")
+    for shape, n in sorted(detail.items(), key=lambda kv: -kv[1])[:5]:
+        print(f"   {shape:22} {n:7,}")
