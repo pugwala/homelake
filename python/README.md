@@ -1,6 +1,6 @@
 # Python mini-course: the Python behind course 1's cleaning
 
-Updated 2026-11-04
+Updated 2026-11-05
 
 A short course for between course 1 and course 2, for people who are new to Python. Course 1 showed what clean data is
 worth; this shows how the code that cleaned it works. Each part starts from a result students already saw in course 1,
