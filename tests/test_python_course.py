@@ -10,6 +10,7 @@ Covered here:
   - the part 0 checks in lnl/check.py, graded against the course data, never against a stored number;
   - the part 1 checks (strings), graded against course 1's last_name_std;
   - the part 2 checks (lists, dictionaries, loops, if), graded against course 1's apply_null_tokens;
+  - the part 3 checks (pandas), graded against course 1's strip_and_null;
   - each part's notebook (python/0*.ipynb), run top to bottom in a real kernel twice: as delivered (every check
     asks for an answer) and with its Answers section filled in (every check passes).
 """
@@ -30,6 +31,7 @@ PARTS = {   # notebook: (its blanks, how many checks it runs)
     ROOT / "python" / "00_open_the_box.ipynb": ({"answer_1", "answer_2", "answer_3"}, 3),
     ROOT / "python" / "01_strings.ipynb": ({"answer_1", "answer_2", "key"}, 4),
     ROOT / "python" / "02_lists_and_loops.ipynb": ({"answer_1", "answer_2", "unknown"}, 4),
+    ROOT / "python" / "03_pandas.ipynb": ({"answer_1", "answer_2", "stripped"}, 4),
 }
 BLANK_LINE = re.compile(r"^(\s*)(\w+) = ___\b.*$", re.M)
 ANSWER = re.compile(r"```python\n(.*?)```", re.S)
@@ -338,6 +340,75 @@ def test_p2_payoff_counts_the_codes_like_part_0s_step_3(raw):
     assert text.startswith("✅") and f"{total:,}" in text
     assert said(check.p2_payoff, _cv_first_code_only).startswith("❌")
     blank = said(check.p2_payoff, _cv_blank)
+    assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
+
+
+# ---- the part 3 checks (pandas), against course 1's strip_and_null -------------------------------------------------
+
+def test_p3_ex1_is_custody_levels_written_as_nothing(raw):
+    """Exercise 1: custody_level values with no characters at all, counted here value by value."""
+    n = int(raw["custody_level"].map(len).eq(0).sum())
+    assert said(check.p3_ex1, check.___).startswith("✏️")
+    assert said(check.p3_ex1, n).startswith("✅")
+    assert said(check.p3_ex1, n + 1).startswith("❌")
+
+
+def test_p3_ex2_is_custody_levels_empty_once_stripped(raw):
+    """Exercise 2: custody_level values that are nothing but spaces and tabs, the Trust Test's Q1 once cleaned."""
+    n = int(sum(1 for v in raw["custody_level"] if not v.strip()))
+    assert said(check.p3_ex2, check.___).startswith("✏️")
+    assert said(check.p3_ex2, n).startswith("✅")
+    assert said(check.p3_ex2, int((raw["custody_level"] == "").sum())).startswith("❌")
+
+
+def _sn_good(df):
+    """A correct strip_and_null, written the way part 3 teaches it."""
+    out = df.copy()
+    for col in out.columns:
+        stripped = out[col].str.strip()
+        out[col] = stripped.mask(stripped == "")
+    return out
+
+
+def _sn_strip_only(df):
+    """Wrong: trims, but leaves the empty text instead of making it null."""
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].str.strip()
+    return out
+
+
+def _sn_blank(df):
+    """A strip_and_null whose blank hasn't been filled in."""
+    out = df.copy()
+    for col in out.columns:
+        stripped = check.___
+        out[col] = stripped.mask(stripped == "")
+    return out
+
+
+def test_p3_ex3_passes_a_strip_and_null_that_matches_course_1():
+    """Exercise 3: the same table as cleaning.strip_and_null, cell for cell."""
+    assert said(check.p3_ex3, _sn_good).startswith("✅")
+
+
+def test_p3_ex3_explains_what_is_wrong():
+    """Blank: asks. Trimmed but not nulled: ❌ naming a column and the value. An error: shows it."""
+    assert said(check.p3_ex3, _sn_blank).startswith("✏️")
+    wrong = said(check.p3_ex3, _sn_strip_only)
+    assert wrong.startswith("❌") and "''" in wrong
+    boom = said(check.p3_ex3, lambda df: df.nope)
+    assert boom.startswith("❌") and "AttributeError" in boom
+
+
+def test_p3_payoff_answers_q1_with_the_students_table(raw):
+    """The payoff: Q1 from the student's own table, against what merely looked empty, counted from the raw file."""
+    looked = int((raw["custody_level"] == "").sum())
+    really = int(sum(1 for v in raw["custody_level"] if not v.strip()))
+    text = said(check.p3_payoff, _sn_good)
+    assert text.startswith("✅") and f"{really:,}" in text and f"{looked:,}" in text
+    assert said(check.p3_payoff, _sn_strip_only).startswith("❌")
+    blank = said(check.p3_payoff, _sn_blank)
     assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
 
 

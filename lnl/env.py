@@ -18,6 +18,7 @@ SESSION_TITLES = {
     "P0": "Python, part 0: Open the Box",
     "P1": "Python, part 1: Strings",
     "P2": "Python, part 2: Lists, Dictionaries and Loops",
+    "P3": "Python, part 3: pandas",
 }
 
 

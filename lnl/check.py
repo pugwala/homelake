@@ -371,3 +371,76 @@ def p2_payoff(func):
           "apply_null_tokens (part 0, step 3). Column by column:")
     for col, n in detail.items():
         print(f"   {col:20} {n:6,}")
+
+
+# ---- Python mini-course, part 3: pandas -------------------------------------------------------------------------
+@lru_cache(maxsize=None)
+def _p3_raw():
+    """The course file as written, every value as text (the checks' own copy)."""
+    from . import pipeline
+    return pipeline.load_raw()
+
+
+def p3_ex1(answer):
+    """How many custody_level values are written as nothing at all ("")."""
+    _verdict(answer, int((_p3_raw()["custody_level"] == "").sum()), 'compare the column with "", then .sum(): (custody == "").sum()')
+
+
+def p3_ex2(answer):
+    """How many custody_level values course 1 makes empty: the Trust Test's Q1, cleaned."""
+    from .cleaning import strip_and_null
+    _verdict(answer, int(strip_and_null(_p3_raw())["custody_level"].isna().sum()),
+             'strip first, then compare: (custody.str.strip() == "").sum()')
+
+
+def _p3_try(func):
+    """Run a student's strip_and_null on the course file. Returns ('blank', None), ('error', message),
+    ('wrong', message) or ('ok', their table)."""
+    if _still_blank(func):
+        return "blank", None
+    from .cleaning import strip_and_null
+    raw = _p3_raw()
+    try:
+        theirs = func(raw.copy())
+    except Exception as e:   # the student's code, any error: say which, don't stop the notebook
+        return "error", f"{type(e).__name__}: {e}"
+    ours = strip_and_null(raw)
+    if not isinstance(theirs, pd.DataFrame) or list(theirs.columns) != list(ours.columns) or len(theirs) != len(ours):
+        return "wrong", "your function should hand back the whole table, with every column. Did you keep `return out`?"
+    for col in ours.columns:
+        a, b = theirs[col].reset_index(drop=True), ours[col].reset_index(drop=True)
+        differs = (a.isna() != b.isna()) | (a.notna() & b.notna() & (a.astype(object) != b.astype(object)))
+        if differs.any():
+            i = int(differs.to_numpy().argmax())
+            show = lambda v: "empty (null)" if pd.isna(v) else repr(v)   # noqa: E731
+            return "wrong", (f"in {col}, row {i:,} was written {raw[col].iloc[i]!r}: yours has {show(a.iloc[i])}, "
+                             f"course 1 has {show(b.iloc[i])}")
+    return "ok", theirs
+
+
+def p3_ex3(func):
+    """my_strip_and_null gives the same table as course 1's strip_and_null, cell for cell."""
+    state, detail = _p3_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "error":
+        print(f"❌ Your function stopped with an error: {detail}. Hint: stripped = out[col].str.strip()")
+    elif state == "wrong":
+        print(f"❌ Not quite: {detail}. Hint: stripped = out[col].str.strip()")
+    else:
+        print(f"✅ Your function gives the same table as course 1's strip_and_null, all {detail.size:,} cells.")
+
+
+def p3_payoff(func):
+    """The Trust Test's Q1 from the student's own table: missing custody levels, against those that only looked empty."""
+    state, detail = _p3_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state != "ok":
+        print(f"❌ {detail}. Fix exercise 3 first.")
+        return
+    looked = int((_p3_raw()["custody_level"] == "").sum())
+    print(f"✅ Q1, from your own table: {int(detail['custody_level'].isna().sum()):,} records are missing a custody "
+          f"level, not the {looked:,} that looked empty. Across the file your function made "
+          f"{int(detail.isna().sum().sum()):,} values empty, part 0's step 1.")

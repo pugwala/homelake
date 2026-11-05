@@ -14,7 +14,7 @@ course data, so if course 1's code changes, the checks change with it.
 | 0 | `00_open_the_box.ipynb` | `cleaning.session2(df)`, the one line from course 1 | None: a function is a named recipe; run its six steps by hand and see what each changed |
 | 1 | `01_strings.ipynb` | Trust Test Q3: no KENTs as written, 3 after session 2 | Variables, strings, methods, `==`, f-strings, a first function (`match_key`), `.map` |
 | 2 | `02_lists_and_loops.ipynb` | No disciplinary points recorded: 3,005 empty, but 5,851 really | Lists, dictionaries, `for`, `if`, `None`, a counter; write `clean_value`; read `apply_null_tokens` and `display_name` |
-| 3 | *planned* | The same count in one line | pandas: a column, `.str`, `value_counts`, filtering; write `strip_and_null` |
+| 3 | `03_pandas.ipynb` | Trust Test Q1: 1,536 custody levels look empty, 2,991 are | DataFrame and Series, a question of every value, `.sum()`, `.str`, `.loc` filtering, `.mask`, `.isna()`; write `strip_and_null` |
 | 4 | *planned* | Course 1's IDs and date formats | Reading, then writing, patterns (regular expressions) |
 | 5 | *planned* | "Your own session 2" | Chaining your functions; checking yours against course 1's; the same step in course 2's SQL |
 
@@ -112,9 +112,35 @@ What the room should see:
 - The loop over the whole file takes a second or two for about 388,000 checks. Part 3's one-line pandas version does
   the same faster, which is why course 1 uses it.
 
+## Part 3 · pandas (about 45 minutes)
+
+Students write course 1's `strip_and_null`, as part 0 promised. They:
+1. look at Q1's column as a list: `'G2'` to `'G5'`, then `''`, `'  '`, `'       '`...;
+2. meet the DataFrame and the Series (`raw.shape`, `raw["custody_level"]`);
+3. ask a question of every value (`custody == "G2"`) and count with `.sum()`: part 2's loop and counter, in one line;
+4. use `.str.strip()` on a whole column, filter rows with `.loc`, and empty values with `.mask`;
+5. finish `my_strip_and_null`, checked against course 1's on all 2,700,000 cells;
+6. answer Q1 from their own table, then read course 1's version: theirs, line for line, apart from `text_columns`.
+
+What the room should see:
+
+| Exercise | Answer | The check says |
+| --- | --- | --- |
+| #1 | `(custody == "").sum()` | 1536 |
+| #2 | `(custody.str.strip() == "").sum()` | 2991 |
+| #3 | `stripped = out[col].str.strip()` | the same table as course 1, all 2,700,000 cells |
+| Payoff | (no blank) | Q1: 2,991 missing, not the 1,536 that looked empty; 77,734 values made empty (part 0, step 1) |
+
+**Points worth a pause:**
+- `True` counts as 1. That one fact turns "how many?" into `.sum()`.
+- pandas is about twice as fast as part 2's loop on one column, which isn't the point. The point is one line instead of
+  a loop and a counter, with fewer places to go wrong.
+- Course 1 loops over `text_columns(out)`, not `out.columns`, so it still works once later sessions add numbers and
+  dates.
+
 ## Tests
 
-`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p2_*`) and
+`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p3_*`) and
 every part's notebook, each run top to bottom twice: blanks in place (every check asks for an answer) and answers
 filled in (every check passes). A notebook added to `python/` without a test fails it.
 It needs no Databricks; the command is at the top of the file.
