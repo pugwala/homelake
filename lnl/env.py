@@ -17,6 +17,7 @@ SESSION_TITLES = {
     5: "The Same Pipeline in PySpark", 6: "Text I: Finding 'Good'", 7: "Text II: Meaning Over Words",
     "P0": "Python, part 0: Open the Box",
     "P1": "Python, part 1: Strings",
+    "P2": "Python, part 2: Lists, Dictionaries and Loops",
 }
 
 

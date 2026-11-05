@@ -282,3 +282,92 @@ def p1_payoff(func):
     line = (f"Your match_key turns {raw.nunique():,} spellings into {keys.nunique():,} names, and finds "
             f"{kents} records named KENT (session 2 found {session2}).")
     print(f"✅ {line}" if state == "ok" and kents == session2 else f"❌ {line} Fix exercise 3 first.")
+
+
+# ---- Python mini-course, part 2: lists, dictionaries, loops, if ----------------------------------------------------
+def _still_blank(func) -> bool:
+    """True when a student's function still has its ___ blank in it (the name ___ is in its compiled code)."""
+    return "___" in getattr(getattr(func, "__code__", None), "co_names", ())
+
+
+def p2_ex1(answer):
+    """How many codes mean "don't know" for escape_risk: len() of its list."""
+    from .cleaning import NULL_TOKENS
+    _verdict(answer, len(NULL_TOKENS["escape_risk"]), "len(codes) counts what's in the list")
+
+
+def p2_ex2(answer):
+    """intake_time's codes, looked up in the data dictionary."""
+    from .cleaning import NULL_TOKENS
+    _verdict(answer, NULL_TOKENS["intake_time"], 'look it up with square brackets: tokens["intake_time"]')
+
+
+@lru_cache(maxsize=None)
+def _p2_cases():
+    """For each data-dictionary column: (its codes, {value: how many records}, the values apply_null_tokens empties),
+    on the data after session 2's first two steps, as course 1 runs them."""
+    from . import pipeline
+    from .cleaning import NULL_TOKENS, apply_null_tokens, set_record_id, strip_and_null
+    before = set_record_id(strip_and_null(pipeline.load_raw()))
+    after = apply_null_tokens(before)
+    cases = {}
+    for col, codes in NULL_TOKENS.items():
+        kept = before[col].notna()
+        emptied = frozenset(before[col][kept & after[col].isna()])
+        cases[col] = (tuple(codes), before[col][kept].value_counts().to_dict(), emptied)
+    return cases
+
+
+def _p2_try(func):
+    """Run a student's clean_value on every different value of the four columns. Returns ('blank', None),
+    ('error', message), ('wrong', message) or ('ok', {column: values it emptied})."""
+    if _still_blank(func):
+        return "blank", None
+    found = {}
+    try:
+        for col, (codes, counts, emptied) in _p2_cases().items():
+            found[col] = 0
+            for value, n in counts.items():
+                got = func(value, list(codes))
+                call = f"clean_value({value!r}, {list(codes)!r}) gives {got!r}"
+                if value in emptied and got is not None:
+                    return "wrong", f"{call}, but {value!r} means don't know in {col}: it should give None"
+                if value not in emptied and got != value:
+                    return "wrong", f"{call}, but {value!r} is a real value in {col}: hand it back as it was"
+                found[col] += n if got is None else 0
+    except Exception as e:   # the student's code, any error: say which, don't stop the notebook
+        return "error", f"{type(e).__name__}: {e}"
+    return "ok", found
+
+
+def p2_ex3(func):
+    """clean_value gives None exactly where course 1's apply_null_tokens empties a value, and every other value
+    back as it was."""
+    state, detail = _p2_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "error":
+        print(f"❌ Your function stopped with an error: {detail}. Hint: unknown = value in codes")
+    elif state == "wrong":
+        print(f"❌ Not quite: {detail}. Hint: unknown = value in codes")
+    else:
+        n = sum(len(counts) for _, counts, _ in _p2_cases().values())
+        print(f"✅ Your clean_value agrees with course 1's apply_null_tokens on all {n:,} different values in the four "
+              "columns.")
+
+
+def p2_payoff(func):
+    """The student's clean_value over the four columns: how many don't-know codes it empties, column by column,
+    against what apply_null_tokens empties (part 0's step 3)."""
+    state, detail = _p2_try(func)
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state != "ok":
+        print(f"❌ {detail}. Fix exercise 3 first.")
+        return
+    # "ok" means it agreed with apply_null_tokens on every value, so its counts are course 1's: say so, with them
+    print(f"✅ Your clean_value finds {sum(detail.values()):,} don't-know codes, the same as course 1's "
+          "apply_null_tokens (part 0, step 3). Column by column:")
+    for col, n in detail.items():
+        print(f"   {col:20} {n:6,}")

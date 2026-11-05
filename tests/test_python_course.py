@@ -9,6 +9,7 @@ Covered here:
   - lnl/inside.py, the helpers part 0 uses to open course 1's one-line steps and show what each step changed;
   - the part 0 checks in lnl/check.py, graded against the course data, never against a stored number;
   - the part 1 checks (strings), graded against course 1's last_name_std;
+  - the part 2 checks (lists, dictionaries, loops, if), graded against course 1's apply_null_tokens;
   - each part's notebook (python/0*.ipynb), run top to bottom in a real kernel twice: as delivered (every check
     asks for an answer) and with its Answers section filled in (every check passes).
 """
@@ -28,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PARTS = {   # notebook: (its blanks, how many checks it runs)
     ROOT / "python" / "00_open_the_box.ipynb": ({"answer_1", "answer_2", "answer_3"}, 3),
     ROOT / "python" / "01_strings.ipynb": ({"answer_1", "answer_2", "key"}, 4),
+    ROOT / "python" / "02_lists_and_loops.ipynb": ({"answer_1", "answer_2", "unknown"}, 4),
 }
 BLANK_LINE = re.compile(r"^(\s*)(\w+) = ___\b.*$", re.M)
 ANSWER = re.compile(r"```python\n(.*?)```", re.S)
@@ -260,6 +262,83 @@ def test_p1_payoff_counts_spellings_names_and_kents(raw):
     assert said(check.p1_payoff, only_kent).startswith("❌")
     blank = said(check.p1_payoff, _blank_key)
     assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank   # asks, and says nothing else
+
+
+# ---- the part 2 checks (lists, dictionaries, loops, if), against course 1's apply_null_tokens ----------------------
+
+def test_p2_ex1_is_how_many_codes_escape_risk_has():
+    """Exercise 1: len() of escape_risk's list of don't-know codes (U and UNK)."""
+    assert said(check.p2_ex1, check.___).startswith("✏️")
+    assert said(check.p2_ex1, 2).startswith("✅")
+    assert said(check.p2_ex1, 1).startswith("❌")
+
+
+def test_p2_ex2_is_intake_times_codes_looked_up():
+    """Exercise 2: the data dictionary's list for intake_time."""
+    assert said(check.p2_ex2, check.___).startswith("✏️")
+    assert said(check.p2_ex2, ["99:99"]).startswith("✅")
+    assert said(check.p2_ex2, "99:99").startswith("❌")
+    assert said(check.p2_ex2, ["U", "UNK"]).startswith("❌")
+
+
+def _cv_blank(value, codes):
+    """A clean_value whose blank hasn't been filled in."""
+    unknown = check.___
+    if unknown:
+        return None
+    return value
+
+
+def _cv_first_code_only(value, codes):
+    """Wrong: only checks the first code in the list, so UNK slips through."""
+    if value == codes[0]:
+        return None
+    return value
+
+
+def _cv_changes_values(value, codes):
+    """Wrong: empties the codes, but hands every other value back in capitals."""
+    if value in codes:
+        return None
+    return value.upper()
+
+
+@pytest.mark.parametrize("func", [lambda v, c: None if v in c else v, lambda v, c: None if v.strip().upper() in c else v],
+                         ids=["in", "upper-in"])
+def test_p2_ex3_passes_a_clean_value_that_agrees_with_course_1(func):
+    """Exercise 3: empty (None) exactly where apply_null_tokens empties a value, every other value unchanged."""
+    assert said(check.p2_ex3, func).startswith("✅")
+
+
+def test_p2_ex3_explains_what_is_wrong():
+    """Blank: asks. A missed code or a changed value: ❌ naming the value. An error: shows it."""
+    assert said(check.p2_ex3, _cv_blank).startswith("✏️")
+    missed = said(check.p2_ex3, _cv_first_code_only)
+    assert missed.startswith("❌") and "'UNK'" in missed
+    changed = said(check.p2_ex3, _cv_changes_values)
+    assert changed.startswith("❌") and "as it was" in changed
+    boom = said(check.p2_ex3, lambda v, c: v.nope())
+    assert boom.startswith("❌") and "AttributeError" in boom
+
+
+def test_p2_ex3_checks_even_a_value_that_appears_once(raw):
+    """Every different value is tried, not only common ones: a function wrong on one rare value fails."""
+    counts = cleaning.strip_and_null(raw)["intake_time"].value_counts()
+    rare = counts[counts == 1].index[0]
+    wrong_once = lambda v, c: "WRONG" if v == rare else (None if v in c else v)   # noqa: E731
+    text = said(check.p2_ex3, wrong_once)
+    assert text.startswith("❌") and repr(rare) in text
+
+
+def test_p2_payoff_counts_the_codes_like_part_0s_step_3(raw):
+    """The payoff: the student's clean_value over the four columns finds the same don't-know codes as
+    apply_null_tokens, counted here straight from the raw file."""
+    total = sum(int(raw[c].str.strip().str.upper().isin(v).sum()) for c, v in cleaning.NULL_TOKENS.items())
+    text = said(check.p2_payoff, lambda v, c: None if v in c else v)
+    assert text.startswith("✅") and f"{total:,}" in text
+    assert said(check.p2_payoff, _cv_first_code_only).startswith("❌")
+    blank = said(check.p2_payoff, _cv_blank)
+    assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
 
 
 # ---- the notebook ------------------------------------------------------------------------------------------------
