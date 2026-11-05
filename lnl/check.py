@@ -148,3 +148,47 @@ def s5_ex1(answer):
 def s5_ex2(answer):
     expected = _stage(4)["restitution_owed"].sum()
     _verdict(answer, expected, 'use s4.agg(F.sum("restitution_owed")).first()[0]. It should match pandas to the cent.')
+
+
+# ---- Python mini-course, part 0: open the box -------------------------------------------------------------------
+@lru_cache(maxsize=None)
+def _p0_nulls_added():
+    """How many nulls session 2's first and third steps each add: (strip_and_null, apply_null_tokens)."""
+    from . import pipeline
+    from .cleaning import apply_null_tokens, set_record_id, strip_and_null
+    raw = pipeline.load_raw()
+    stripped = strip_and_null(raw)
+    keyed = set_record_id(stripped)
+    nulls = lambda df: int(df.isna().sum().sum())   # noqa: E731
+    return nulls(stripped) - nulls(raw), nulls(apply_null_tokens(keyed)) - nulls(keyed)
+
+
+def _p0_number(answer, expected, hint):
+    """_verdict() for a count read off a report, explaining a number typed with a comma (Python reads 77,734 as
+    two numbers)."""
+    if isinstance(answer, tuple):
+        print(f"❌ Python reads a comma as 'two numbers', so you have {answer!r}. Type the number without the comma, "
+              "like 1234.")
+        return
+    _verdict(answer, expected, hint)
+
+
+def p0_ex1(answer):
+    """How many values became empty (null) in step 1, strip_and_null?"""
+    _p0_number(answer, _p0_nulls_added()[0], "read the 'Empty values (nulls)' line under step 1: the number after the + sign")
+
+
+def p0_ex2(answer):
+    """How many more values became empty in step 3, apply_null_tokens?"""
+    _p0_number(answer, _p0_nulls_added()[1], "read the 'Empty values (nulls)' line under step 3: the number after the + sign")
+
+
+def p0_ex3(answer):
+    """Which step added the three name columns ending in _std? Taken by name, with or without cleaning. or ()."""
+    if isinstance(answer, _Blank):
+        _verdict(answer, None, "")
+        return
+    name = getattr(answer, "__name__", answer)
+    if isinstance(name, str):
+        name = name.strip().removeprefix("cleaning.").removesuffix("()").strip()
+    _verdict(name, "standardize_names", "look for the step whose report says 'New columns (3)': type its name in quotes")

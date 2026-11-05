@@ -16,6 +16,10 @@ Seven 45-minute hands-on sessions that take report writers from "I loaded a CSV"
 | 6 | Text I: Finding "Good" | Keyword → case → whole word → lemma → vocabulary → negation → domain exclusions, each scored against an answer key |
 | 7 | Text II: Meaning Over Words | Embeddings, semantic search, zero-shot and few-shot classification, topic modeling, AI governance |
 
+### Between course 1 and course 2: the Python mini-course
+
+For students new to Python. Course 1 shows what clean data is worth; [`python/`](python/README.md) shows how the code that cleaned it works, starting from results students already saw. Part 0, *Open the Box*, opens session 2's one line into its six steps and runs them by hand. Parts 1 to 5 (strings, lists and loops, pandas, patterns, your own pipeline) are planned.
+
 Each session runs about 5 minutes of setup and recap, 30 minutes hands-on, and 10 minutes of wrap-up. Exercises check themselves, and answer keys are at the bottom of each notebook. See [FACILITATOR_GUIDE.md](FACILITATOR_GUIDE.md) for timing, talking points, and the numbers everyone should see.
 
 ## For staff: how to open a session
@@ -55,6 +59,7 @@ After the sessions, [`enterprise/`](enterprise/README.md) runs the same cleansin
 notebooks/          the seven sessions (ship without outputs; exercises use ___ blanks)
                     clearing-out-the-old.ipynb: one cell, run once after re-cloning, that clears an older copy's
                     cached data and session 5 table and checks the workspace is ready for session 2
+python/             the Python mini-course, between course 1 and course 2 (see python/README.md)
 lnl/                course helper package; each session's cleansing lives here once taught
   config.py         the settings above
   env.py            environment detection, dependency checks, dataset generation
@@ -66,11 +71,13 @@ lnl/                course helper package; each session's cleansing lives here o
   spark_pipeline.py sessions 2-4 in PySpark as functions, for the enterprise pipeline
   enterprise.py     enterprise track helpers: names, the first delivery, the pipeline, the handover
   trust.py          the Trust Test questions      check.py        exercise checkers
+  inside.py         Python mini-course part 0: show a function's code, its steps, what each step changed
   publish.py        the handoff to course 2: sessions 2-4's output as one Parquet file per table, with a manifest of
                     fingerprints, published only when the 19 Facilitator Guide numbers match (python -m lnl.publish
                     --out DIR; needs duckdb, which course 2's platform has)
   parity.py         those 19 numbers, as checks any DuckDB connection to the output can run
 generator/          gen_hero_offenders.py builds the dataset and the conduct-notes answer key
+tests/              test_python_course.py: the mini-course's helpers, checks and notebook
 wheels/             spaCy's small English model, so session 6 works without github.com access
 docs/               student-handout.pdf, the 10-page student handout, ready to print
 extras/             supply_orders_type_conversion.ipynb + mock_supply_orders.csv: a standalone type-conversion walkthrough (keep the two files together)

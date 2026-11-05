@@ -191,6 +191,10 @@ Results depend on which embedding method loads (the notebook prints it). Tested 
 
 **Talking points:** negation is a known weak spot for embeddings; if semantic search surfaces *not a good day*, use it. If anyone asks about `C=100` in the few-shot cell: the note vectors are scaled to length 1, so the default setting holds the model back too hard. With the default, few-shot scored only 0.750 with the sentence-transformer, below the rules. Close with the governance point: real conduct notes are criminal justice information, and any AI Function or model use goes through AI governance review first.
 
+## Between the courses: the Python mini-course
+
+For students new to Python, after course 1 and before course 2. It starts from results they already saw, then teaches the Python behind them: value first, then the how. Each part's timing, numbers and talking points are in [`python/README.md`](python/README.md). Part 0, *Open the Box*, takes about 30 minutes, and students write no code: they open session 2's one line and run its six steps by hand. Dry-run it like any session: the three answers are 77734, 6122 and `"standardize_names"`.
+
 ## After the series: the enterprise track
 
 `enterprise/` is optional and runs only on the agency workspace: Unity Catalog and a Lakeflow pipeline with expectations. It's for people who finished sessions 1 to 5, working at their own pace (three notebooks, about an hour and a quarter), not a room session. Course 2, [pugwala/lakehouse](https://github.com/pugwala/lakehouse), carries on from here in its own `enterprise/` folder: the next delivery (incremental loads), governance (masks, row filters, the published view), a scheduled job that alerts, and monitoring. [`enterprise/README.md`](enterprise/README.md) has setup and the admin asks; `00_preflight` checks them.
