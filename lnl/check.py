@@ -407,15 +407,27 @@ def _p3_try(func):
     ours = strip_and_null(raw)
     if not isinstance(theirs, pd.DataFrame) or list(theirs.columns) != list(ours.columns) or len(theirs) != len(ours):
         return "wrong", "your function should hand back the whole table, with every column. Did you keep `return out`?"
-    for col in ours.columns:
+    problem = _first_difference(theirs, ours, raw, ours.columns)
+    return ("wrong", problem) if problem else ("ok", theirs)
+
+
+def _first_difference(theirs, ours, raw, columns, rows=None):
+    """The first cell, column by column and row by row, where the student's table differs from course 1's, as a
+    sentence naming the column, the row, what the file had and both values; None when they agree. Rows are compared
+    by position; `rows` (True/False by position) limits which are compared."""
+    show = lambda v: "empty (null)" if pd.isna(v) else repr(v)   # noqa: E731
+    for col in columns:
+        if col not in theirs.columns:
+            return f"your table has no {col} column"
         a, b = theirs[col].reset_index(drop=True), ours[col].reset_index(drop=True)
         differs = (a.isna() != b.isna()) | (a.notna() & b.notna() & (a.astype(object) != b.astype(object)))
+        if rows is not None:
+            differs &= rows
         if differs.any():
             i = int(differs.to_numpy().argmax())
-            show = lambda v: "empty (null)" if pd.isna(v) else repr(v)   # noqa: E731
-            return "wrong", (f"in {col}, row {i:,} was written {raw[col].iloc[i]!r}: yours has {show(a.iloc[i])}, "
-                             f"course 1 has {show(b.iloc[i])}")
-    return "ok", theirs
+            written = f" was written {raw[col].iloc[i]!r}" if col in raw.columns else ""
+            return f"in {col}, row {i:,}{written}: yours has {show(a.iloc[i])}, course 1 has {show(b.iloc[i])}"
+    return None
 
 
 def p3_ex3(func):
@@ -555,3 +567,123 @@ def p4_payoff(func):
           f"Course 1 recognizes every one of them with {len(DATE_FORMATS)} patterns. The five most common:")
     for shape, n in sorted(detail.items(), key=lambda kv: -kv[1])[:5]:
         print(f"   {shape:22} {n:7,}")
+
+
+# ---- Python mini-course, part 5: your own session 2 -------------------------------------------------------------
+@lru_cache(maxsize=None)
+def _p5_course1():
+    """Course 1's answer for the steps the student chains: strip_and_null then apply_null_tokens (rows in file
+    order, not yet labeled), and session 2's last_name_std in the same order."""
+    from .cleaning import apply_null_tokens, strip_and_null
+    raw = _p3_raw()
+    return apply_null_tokens(strip_and_null(raw)), _stage(2)["last_name_std"].reset_index(drop=True)
+
+
+def _p5_run(func, start):
+    """Run a student's function on a fresh copy of `start`: ('blank', None), ('error', message) or ('ran', table)."""
+    if _still_blank(func):
+        return "blank", None
+    try:
+        out = func(start.copy())
+    except Exception as e:   # the student's code, any error: say which, don't stop the notebook
+        return "error", f"Your function stopped with an error: {type(e).__name__}: {e}"
+    if not isinstance(out, pd.DataFrame) or len(out) != len(start):
+        return "error", "Your function should hand back the whole table. Did you keep `return out` (or `return df`)?"
+    return "ran", out
+
+
+def p5_ex1(func):
+    """null_codes, run after strip_and_null, gives the same table as course 1's apply_null_tokens."""
+    from .cleaning import strip_and_null
+    raw = _p3_raw()
+    state, out = _p5_run(func, strip_and_null(raw))
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state == "error":
+        print(f"❌ {out}")
+        return
+    ours, _ = _p5_course1()
+    problem = _first_difference(out, ours, raw, ours.columns)
+    if problem:
+        print(f"❌ Not quite: {problem}. Hint: cleaned = [clean_value(v, codes) for v in out[column]]")
+    else:
+        print(f"✅ Your null_codes gives course 1's apply_null_tokens table, all {ours.size:,} cells.")
+
+
+def _p5_check_pipeline(func):
+    """Run a student's my_session2 on the course file and compare it with course 1. Returns (state, detail): detail
+    is their table when 'ok', else a message."""
+    raw = _p3_raw()
+    state, out = _p5_run(func, raw)
+    if state != "ran":
+        return state, out
+    ours, std = _p5_course1()
+    problem = _first_difference(out, ours, raw, ours.columns)
+    if problem:
+        return "wrong", problem
+    plain = ours["last_name"].reset_index(drop=True).map(lambda v: not isinstance(v, str) or v.isascii())
+    problem = _first_difference(out, std.to_frame(), raw, ["last_name_std"], rows=plain)
+    return ("wrong", problem) if problem else ("ok", out)
+
+
+def p5_ex2(func):
+    """my_session2 matches course 1 on every column those steps touch, and on last_name_std without accents."""
+    state, detail = _p5_check_pipeline(func)
+    if state == "blank":
+        _verdict(___, None, "")
+    elif state == "error":
+        print(f"❌ {detail}")
+    elif state == "wrong":
+        print(f"❌ Not quite: {detail}. Hint: step 1 is df = my_strip_and_null(df)")
+    else:
+        ours, _ = _p5_course1()
+        print(f"✅ Your session 2 matches course 1 on all {ours.size:,} cells, and your last_name_std on every last "
+              "name without accents.")
+
+
+def p5_payoff(func):
+    """Three questions from the student's own table, against course 1's session 2: missing custody levels (Q1),
+    missing disciplinary points, and KENTs (Q3)."""
+    state, detail = _p5_check_pipeline(func)
+    if state == "blank":
+        _verdict(___, None, "")
+        return
+    if state != "ok":
+        print(f"❌ {detail}. Fix exercises 1 and 2 first.")
+        return
+    course1 = _stage(2)
+    answers = [("Q1  Records missing a custody level", int(detail["custody_level"].isna().sum()),
+                int(course1["custody_level"].isna().sum())),
+               ("    Records with no disciplinary points recorded", int(detail["disciplinary_points"].isna().sum()),
+                int(course1["disciplinary_points"].isna().sum())),
+               ("Q3  Records named KENT", int((detail["last_name_std"] == "KENT").sum()),
+                int((course1["last_name_std"] == "KENT").sum()))]
+    # "ok" means their table matched course 1's cell for cell, so these answers are course 1's: say so, with them
+    kents = answers[2][1]
+    print(f"✅ Your own session 2 answers like course 1's: {answers[0][1]:,} missing custody "
+          f"levels, {answers[1][1]:,} with no disciplinary points, {kents} records named KENT.")
+    for question, mine, theirs in answers:
+        print(f"   {question:48} yours {mine:6,}   course 1 {theirs:6,}")
+
+
+def p5_ex3(answer):
+    """Which two of the student's functions course 2's one line of SQL does: strip_and_null and clean_value, as a
+    list, in either order, by name (with or without my_ or cleaning.) or as the functions themselves."""
+    if isinstance(answer, _Blank):
+        _verdict(answer, None, "")
+        return
+    if not isinstance(answer, (list, tuple)):
+        print(f"❌ Not quite. You have {answer!r}. Hint: two names in a list, in square brackets: [\"...\", \"...\"]")
+        return
+    names = set()
+    for item in answer:
+        name = getattr(item, "__name__", item)
+        if isinstance(name, str):
+            name = name.strip().removeprefix("cleaning.").removeprefix("my_").removesuffix("()")
+        names.add(name)
+    if names == {"strip_and_null", "clean_value"}:
+        print("✅ Correct: trim and nullif do strip_and_null's job; CASE WHEN ... IN (...) THEN NULL does clean_value's.")
+    else:
+        print(f"❌ Not quite. You have {answer!r}. Hint: one function trims and empties blanks, the other empties the "
+              "don't-know codes")

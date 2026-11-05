@@ -12,6 +12,7 @@ Covered here:
   - the part 2 checks (lists, dictionaries, loops, if), graded against course 1's apply_null_tokens;
   - the part 3 checks (pandas), graded against course 1's strip_and_null;
   - the part 4 checks (patterns), graded against course 1's ID_PATTERN, profile_shapes and DATE_FORMATS;
+  - the part 5 checks (your own session 2), graded against course 1's strip_and_null, apply_null_tokens and session2;
   - each part's notebook (python/0*.ipynb), run top to bottom in a real kernel twice: as delivered (every check
     asks for an answer) and with its Answers section filled in (every check passes).
 """
@@ -34,6 +35,7 @@ PARTS = {   # notebook: (its blanks, how many checks it runs)
     ROOT / "python" / "02_lists_and_loops.ipynb": ({"answer_1", "answer_2", "unknown"}, 4),
     ROOT / "python" / "03_pandas.ipynb": ({"answer_1", "answer_2", "stripped"}, 4),
     ROOT / "python" / "04_patterns.ipynb": ({"answer_1", "text", "answer_3"}, 4),
+    ROOT / "python" / "05_your_own_session_2.ipynb": ({"cleaned", "df", "answer_3"}, 4),
 }
 BLANK_LINE = re.compile(r"^(\s*)(\w+) = ___\b.*$", re.M)
 ANSWER = re.compile(r"```python\n(.*?)```", re.S)
@@ -486,6 +488,124 @@ def test_p4_payoff_shows_the_shapes_of_every_date(raw):
     assert said(check.p4_payoff, _shape_capitals_only).startswith("❌")
     blank = said(check.p4_payoff, _shape_blank)
     assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
+
+
+# ---- the part 5 checks (your own session 2), against course 1 -----------------------------------------------------
+
+def _p5_clean_value(value, codes):
+    """Part 2's clean_value, as a student would have it."""
+    return None if value in codes else value
+
+
+def _p5_null_codes(df):
+    """A correct null_codes: part 2's clean_value over every column in the data dictionary."""
+    out = df.copy()
+    for column, codes in cleaning.NULL_TOKENS.items():
+        out[column] = [_p5_clean_value(v, codes) for v in out[column]]
+    return out
+
+
+def _p5_first_column_only(df):
+    """Wrong: stops after the dictionary's first column."""
+    out = df.copy()
+    for column, codes in cleaning.NULL_TOKENS.items():
+        out[column] = [_p5_clean_value(v, codes) for v in out[column]]
+        return out
+
+
+def _p5_null_codes_blank(df):
+    """A null_codes whose blank hasn't been filled in."""
+    out = df.copy()
+    for column, codes in cleaning.NULL_TOKENS.items():
+        cleaned = check.___
+        out[column] = cleaned
+    return out
+
+
+def _p5_session2(df):
+    """A correct my_session2: parts 3, 2 and 1 in order."""
+    df = _sn_good(df)
+    df = _p5_null_codes(df)
+    df["last_name_std"] = df["last_name"].dropna().map(lambda n: n.strip().upper())
+    return df
+
+
+def _p5_no_codes(df):
+    """Wrong: skips step 2, so the don't-know codes stay."""
+    df = _sn_good(df)
+    df["last_name_std"] = df["last_name"].dropna().map(lambda n: n.strip().upper())
+    return df
+
+
+def _p5_no_key(df):
+    """Wrong: forgets the match key."""
+    return _p5_null_codes(_sn_good(df))
+
+
+def _p5_session2_blank(df):
+    """A my_session2 whose blank hasn't been filled in."""
+    df = check.___
+    df = _p5_null_codes(df)
+    return df
+
+
+def test_p5_ex1_passes_null_codes_that_matches_apply_null_tokens():
+    """Exercise 1: after strip_and_null, the same table as course 1's apply_null_tokens."""
+    assert said(check.p5_ex1, _p5_null_codes).startswith("✅")
+
+
+def test_p5_ex1_explains_what_is_wrong():
+    """Blank: asks. A column left out: ❌ naming it. An error: shows it."""
+    assert said(check.p5_ex1, _p5_null_codes_blank).startswith("✏️")
+    wrong = said(check.p5_ex1, _p5_first_column_only)
+    assert wrong.startswith("❌") and "intake_time" in wrong   # the first column it left out, in table order
+    boom = said(check.p5_ex1, lambda df: df.nope)
+    assert boom.startswith("❌") and "AttributeError" in boom
+
+
+def test_p5_ex2_passes_a_pipeline_that_matches_course_1():
+    """Exercise 2: every column course 1 has after those steps, plus last_name_std on names without accents."""
+    assert said(check.p5_ex2, _p5_session2).startswith("✅")
+
+
+def test_p5_ex2_explains_what_is_wrong():
+    """Blank: asks. A step missed: ❌ showing a code left in. The match key missing: ❌ naming it."""
+    assert said(check.p5_ex2, _p5_session2_blank).startswith("✏️")
+    no_codes = said(check.p5_ex2, _p5_no_codes)
+    assert no_codes.startswith("❌") and "'99:99'" in no_codes   # the first code left in, in table order
+    no_key = said(check.p5_ex2, _p5_no_key)
+    assert no_key.startswith("❌") and "last_name_std" in no_key
+
+
+def test_p5_payoff_answers_three_questions_like_course_1(raw):
+    """The payoff: Q1, Q3 and missing disciplinary points from the student's own table, counted here from the raw
+    file."""
+    empty = lambda col: int(sum(1 for v in raw[col] if not v.strip()))   # noqa: E731
+    q1 = empty("custody_level")
+    points = empty("disciplinary_points") + int((raw["disciplinary_points"].str.strip() == "N/A").sum())
+    kents = int((raw["last_name"].str.strip().str.upper() == "KENT").sum())
+    text = said(check.p5_payoff, _p5_session2)
+    assert text.startswith("✅") and f"{q1:,}" in text and f"{points:,}" in text and f"{kents} records named KENT" in text
+    assert said(check.p5_payoff, _p5_no_codes).startswith("❌")
+    blank = said(check.p5_payoff, _p5_session2_blank)
+    assert blank.startswith("✏️") and len(blank.splitlines()) == 1, blank
+
+
+@pytest.mark.parametrize("answer", [["my_strip_and_null", "clean_value"], ["clean_value", "strip_and_null"],
+                                    [_sn_good, _p5_clean_value]], ids=["names", "other-order", "functions"])
+def test_p5_ex3_takes_the_two_functions_however_they_are_named(answer):
+    """Exercise 3: course 2's one SQL line does strip_and_null's and clean_value's jobs, in either order; a function
+    is known by its name, with or without my_ (the test's own copies are named after what they stand for)."""
+    if answer[0] is _sn_good:
+        answer = [type("F", (), {"__name__": "my_strip_and_null"})(), type("F", (), {"__name__": "clean_value"})()]
+    assert said(check.p5_ex3, answer).startswith("✅")
+
+
+def test_p5_ex3_explains_what_is_wrong():
+    """Blank: asks. The wrong pair: ❌. One name, not a list: says to use a list."""
+    assert said(check.p5_ex3, check.___).startswith("✏️")
+    assert said(check.p5_ex3, ["match_key", "clean_value"]).startswith("❌")
+    assert "list" in said(check.p5_ex3, "clean_value")
 
 
 # ---- the notebook ------------------------------------------------------------------------------------------------

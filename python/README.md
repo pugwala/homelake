@@ -16,7 +16,7 @@ course data, so if course 1's code changes, the checks change with it.
 | 2 | `02_lists_and_loops.ipynb` | No disciplinary points recorded: 3,005 empty, but 5,851 really | Lists, dictionaries, `for`, `if`, `None`, a counter; write `clean_value`; read `apply_null_tokens` and `display_name` |
 | 3 | `03_pandas.ipynb` | Trust Test Q1: 1,536 custody levels look empty, 2,991 are | DataFrame and Series, a question of every value, `.sum()`, `.str`, `.loc` filtering, `.mask`, `.isna()`; write `strip_and_null` |
 | 4 | `04_patterns.ipynb` | Trust Test Q4: `01-01-2018` as text, `1999-11-02` really | Reading and writing patterns (`\d`, `{8}`, `[A-Za-z]`, `+`), `re.fullmatch`, `re.sub`; prove the IDs; write `shape` |
-| 5 | *planned* | "Your own session 2" | Chaining your functions; checking yours against course 1's; the same step in course 2's SQL |
+| 5 | `05_your_own_session_2.ipynb` | Q1, Q3 and missing disciplinary points, all wrong as written | A list made by a loop on one line; chaining functions into a pipeline; checking it against course 1; reading course 2's SQL |
 
 Course 1's text sessions (6 and 7) aren't covered yet.
 
@@ -164,9 +164,38 @@ What the room should see:
 - `fullmatch` matters: `r"\d{4}-\d{2}-\d{2}"` must not match `2027-01-17 00:00:00`. With `re.search` it would.
 - Recognizing a format isn't reading a date: `02/30/2020` has the right shape but no such day. Session 3 flags those.
 
+## Part 5 · Your Own Session 2 (about 45 minutes)
+
+Students chain their own functions into a pipeline and prove it against course 1. They:
+1. ask three questions of the raw file and get three wrong answers (1,536 missing custody levels, 1,457 with no
+   disciplinary points, 0 KENTs);
+2. start from their own `match_key`, `clean_value` and `my_strip_and_null`, given filled in so everyone starts equal;
+3. write `null_codes` with a list made by a loop on one line, checked against `apply_null_tokens` on 2,700,000 cells;
+4. chain `my_session2` (strip and null, the codes, the match key), checked against course 1 on every cell;
+5. get all three answers right from their own table: 2,991, 5,851 and 3, the same as course 1;
+6. read course 2's `w_text` SQL macro (quoted as text, dated) and say which two of their functions it does.
+
+What the room should see:
+
+| Exercise | Answer | The check says |
+| --- | --- | --- |
+| #1 | `cleaned = [clean_value(v, codes) for v in out[column]]` | course 1's apply_null_tokens table, all 2,700,000 cells |
+| #2 | `df = my_strip_and_null(df)` | matches course 1 on all 2,700,000 cells and last_name_std without accents |
+| Payoff | (no blank) | 2,991 missing custody levels, 5,851 with no disciplinary points, 3 KENTs, as course 1 |
+| #3 | `["my_strip_and_null", "clean_value"]` | trim and nullif are strip_and_null; CASE WHEN ... IN is clean_value |
+
+**Points worth a pause:**
+- `.dropna().map(match_key)` then assigned back: pandas puts each result on its own row, so the left-out rows stay
+  empty. It's the first time students see rows lined up by label rather than position.
+- Course 2's list of codes includes `NONE`, which course 1's file treats as a real answer. Lists of codes belong to a
+  source and its data owner, not to the language.
+- The SQL is quoted, not run: course 1 doesn't depend on course 2. If course 2's macro changes, update the quote and
+  its date.
+- The closing lesson is the one every part used: check your code against something you trust, cell by cell.
+
 ## Tests
 
-`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p4_*`) and
+`tests/test_python_course.py` covers the helpers (`lnl/inside.py`), the checks (`check.p0_*` to `check.p5_*`) and
 every part's notebook, each run top to bottom twice: blanks in place (every check asks for an answer) and answers
 filled in (every check passes). A notebook added to `python/` without a test fails it.
 It needs no Databricks; the command is at the top of the file.
